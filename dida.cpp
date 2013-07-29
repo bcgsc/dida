@@ -48,17 +48,17 @@ int main(int argc, char *argv[]){
 		for(int i=1;i<procSize;++i)MPI_Send(&token,1,MPI_INT,i,0,MPI_COMM_WORLD);
 	}
 	else if (procRank==procSize-2){
-		indstm<<"/home/hmohamadi/abyss/bin/abyss-index "<<ubName<<"-"<<procRank<<".fa";
-		std::cout<<"/home/hmohamadi/abyss/bin/abyss-index "<<ubName<<"-"<<procRank<<".fa\n";
+		indstm<<"abyss-index "<<ubName<<"-"<<procRank<<".fa";
+		std::cout<<"abyss-index "<<ubName<<"-"<<procRank<<".fa\n";
 		std::system(indstm.str().c_str());
-		indstm_tmp<<"/home/hmohamadi/abyss/bin/abyss-index "<<ubName<<"-"<<procRank+1<<".fa";
-		std::cout<<"/home/hmohamadi/abyss/bin/abyss-index "<<ubName<<"-"<<procRank+1<<".fa\n";
+		indstm_tmp<<"abyss-index "<<ubName<<"-"<<procRank+1<<".fa";
+		std::cout<<"abyss-index "<<ubName<<"-"<<procRank+1<<".fa\n";
 		std::system(indstm_tmp.str().c_str());
 		MPI_Send(&token,1,MPI_INT,0,0,MPI_COMM_WORLD);
 		MPI_Recv(&token,1,MPI_INT,0,0,MPI_COMM_WORLD,&status);
 	}
 	else if(procRank==procSize-1){
-		dspstm<<"/scratch/hmohamadi/DIDA/bin/dsp "<<fasName<<" "<<bflKmer<<" "<<pNum<<" "<<readName;
+		dspstm<<"dsp "<<fasName<<" "<<bflKmer<<" "<<pNum<<" "<<readName;
 		std::system(dspstm.str().c_str());
 		MPI_Send(&token,1,MPI_INT,0,0,MPI_COMM_WORLD);
 		MPI_Recv(&token,1,MPI_INT,0,0,MPI_COMM_WORLD,&status);
@@ -66,8 +66,8 @@ int main(int argc, char *argv[]){
 
 	// 3. Index
 	else{
-		indstm<<"/home/hmohamadi/abyss/bin/abyss-index "<<ubName<<"-"<<procRank<<".fa";
-		std::cout<<"/home/hmohamadi/abyss/bin/abyss-index "<<ubName<<"-"<<procRank<<".fa\n";
+		indstm<<"abyss-index "<<ubName<<"-"<<procRank<<".fa";
+		std::cout<<"abyss-index "<<ubName<<"-"<<procRank<<".fa\n";
 		std::system(indstm.str().c_str());
 		MPI_Send(&token,1,MPI_INT,0,0,MPI_COMM_WORLD);
 		MPI_Recv(&token,1,MPI_INT,0,0,MPI_COMM_WORLD,&status);
@@ -77,8 +77,8 @@ int main(int argc, char *argv[]){
 	if(procRank==0)
 		for(int i=1;i<procSize;++i)MPI_Recv(&token,1,MPI_INT,i,0,MPI_COMM_WORLD,&status);
 	else{
-		alnstm<<"/home/hmohamadi/abyss/bin/abyss-map --order -l"<<alnLmer<<" -j12 mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam";
-		std::cout<<"/home/hmohamadi/abyss/bin/abyss-map --order -l"<<alnLmer<<" -j12 mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam\n";
+		alnstm<<"abyss-map --order -l"<<alnLmer<<" -j12 mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam";
+		std::cout<<"abyss-map --order -l"<<alnLmer<<" -j12 mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam\n";
 		std::system(alnstm.str().c_str());
 		MPI_Send(&token,1,MPI_INT,0,0,MPI_COMM_WORLD);
 	}
