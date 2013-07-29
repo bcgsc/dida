@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#$ -S /bin/bash
+#$ -N mpi_dida
+#$ -l mem_token=46G,mem_free=46G,h_vmem=46G
+#$ -R y
+#$ -q mpi.q,all.q
+#$ -pe openmpi 13 
+#$ -j y
+#$ -o $JOB_ID.o
+
+export PATH=/scratch/hmohamadi/DIDA/src_mpi_3/:/home/hmohamadi/abyss/bin/:/usr/mpi/gcc/openmpi-1.4.1/bin:$PATH
+export LD_LIBRARY_PATH=/usr/mpi/gcc/openmpi-1.4.1/lib:$LD_LIBRARY_PATH
+export mpirun='mpirun --mca btl_openib_receive_queues X,128,256,192,128:X,4096,256,128,32:X,12288,256,128,32:X,65536,256,128,3'
+echo mpirun="$mpirun"
+
+echo "==> pe_hostfile <=="
+cat $PE_HOSTFILE
+echo
+
+echo "Job started at: $(date)"
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+
+export OMP_NUM_THREADS=12
+mpirun -np 13 dida 12 28 28 treads.fastq ABySSTest-3.fa 
+
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+echo "Job ended at:   $(date)"

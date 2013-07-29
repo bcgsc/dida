@@ -20,8 +20,9 @@ int main(int argc, char *argv[]){
 	int pNum = atoi(argv[1]); // Number of Partitions
 	int alnLmer = atoi(argv[2]); // Alignment censecutive match length
 	int bflKmer=atoi(argv[3]); // Bloom filter kmer length
-	const char *readName = argv[4]; // Name of read file in fastq format
-	const char *fasName = argv[5]; // Name of Refrence, Contig file in fasta format
+	int numThr=atoi(argv[4]); // Number of threads 
+	const char *readName = argv[5]; // Name of read file in fastq format
+	const char *fasName = argv[6]; // Name of Refrence, Contig file in fasta format
 
 	std::string ubName, ueName;
 	getFname(fasName, ubName, ueName);
@@ -77,8 +78,8 @@ int main(int argc, char *argv[]){
 	if(procRank==0)
 		for(int i=1;i<procSize;++i)MPI_Recv(&token,1,MPI_INT,i,0,MPI_COMM_WORLD,&status);
 	else{
-		alnstm<<"abyss-map --order -l"<<alnLmer<<" -j12 mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam";
-		std::cout<<"abyss-map --order -l"<<alnLmer<<" -j12 mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam\n";
+		alnstm<<"abyss-map --order -l"<<alnLmer<<" -j"<<numThr<< " mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam";
+		std::cout<<"abyss-map --order -l"<<alnLmer<<" -j"<<numThr<< " mreads-"<<procRank<<".fastq "<<ubName<<"-"<<procRank<<".fa > aln-"<<procRank<<".sam\n";
 		std::system(alnstm.str().c_str());
 		MPI_Send(&token,1,MPI_INT,0,0,MPI_COMM_WORLD);
 	}
