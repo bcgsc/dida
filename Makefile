@@ -12,7 +12,7 @@ all: $(EXEC1) $(EXEC2)
 
 SRCS1=dida.cpp partition.cpp merge.cpp
 
-SRCS2=dsp.cpp Common/HashManager.cpp Common/BloomFilter.cpp Common/city.cpp
+SRCS2=dsp.cpp Common/HashManager.cpp Common/BloomFilter.cpp Common/city.cc
 
 $(EXEC1):$(SRCS1)
 	$(MPICXX) $(OPTFLAGS) -o $@ $^
