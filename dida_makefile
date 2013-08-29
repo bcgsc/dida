@@ -1,0 +1,35 @@
+CTIGS?=
+PARTS?=
+DMERS?=
+KMERS?=$(DMERS)
+
+all: Partition Index Dispatch Align Merge
+
+Partition: 
+	SGE_RREQ="-N DIDA-PARTITION -l mem_token=1G,mem_free=1G,h_vmem=1G" && \
+	prt $(CTIGS).fa $(PARTS) 
+
+INDEXS=$(patsubst %.tmp,%.fa,$(wildcard *-*-*.tmp))
+
+Index: $(INDEXS)
+
+%.fa: Partition 
+	SGE_RREQ="-N DIDA-INDEX -l mem_token=1G,mem_free=1G,h_vmem=1G" && \
+	abyss-index $@
+
+Dispatch: Partition
+	SGE_RREQ="-N DIDA-DISPATCH -pe ncpus $(PARTS) -l mem_token=3.7G,mem_free=3.7G,h_vmem=3.7G" && \
+	dsp $(CTIGS).fa $(DMERS) $(PARTS) $(reads)
+
+ALIGNS=$(patsubst $(CTIGS)-%.tmp,-%.,$(wildcard *-*-*.tmp))
+
+Align: $(ALIGNS)
+
+-%.: Index Dispatch
+	SGE_RREQ="-N DIDA-ALIGN -pe ncpus $(PARTS) -l mem_token=3.7G,mem_free=3.7G,h_vmem=3.7G" && \
+	abyss-map -l$(KMERS) -j$(PARTS) --order mreads$@fastq $(CTIGS)$@fa > aln$@sam
+
+Merge: Align
+	SGE_RREQ="-N DIDA-MERGE -l mem_token=2G,mem_free=2G,h_vmem=2G" && \
+	mrg $(PARTS)
+	
