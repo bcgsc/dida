@@ -37,16 +37,13 @@ int main(int argc, const char *argv[]){
 		samFiles[i].open(sstm.str().c_str());
 	}
 
-	//rVisit vector
-	//old data get inf. readfile. SP1.fastq=815832422 SP2.fastq=769338690 SP3.fastq=31809228 CHR14=32621862
-	unsigned cntgCount=0,readCount=0;// new_pm_40k=25175698 pm_40k=294073884 trimmed data SP1=514155660 SP2=458740024 SP3=5791684
+	unsigned cntgCount=0,readCount=0;
 	getInf(cntgCount, readCount);
 	std::cout<<"Max_Cntg_ID="<<cntgCount<< "\nMax_Read_ID="<<readCount<<"\n";
 
 	uint8_t *rVisit = new uint8_t [readCount];
 	for(unsigned i=0; i<readCount;++i) rVisit[i]=0;
 
-	 // unitig=160626489 rescaffold pm_40k=168182630 contig=167792650 scaffold=168182630 CHR14_Unitig=1096624 CHR14_Contig=1118721
 	uint8_t *cVisit = new uint8_t [cntgCount];
 	for(unsigned i=0; i<cntgCount;++i) cVisit[i]=0;
 
@@ -63,10 +60,7 @@ int main(int argc, const char *argv[]){
 	uint16_t *s2Visit = new uint16_t [readCount];
 	for(unsigned i=0; i<readCount;++i) s2Visit[i]=0;
 
-
-
 	//Preprocessing BEGIN
-
 	//Read and Write Head Line of sam files
 	std::string HDline, PGline;
 	for (int i = 0; i < pNum; ++i){
@@ -113,7 +107,7 @@ int main(int argc, const char *argv[]){
 					s2Visit[2*readId+pairId-1]=s2Val;
 
 				}
-				else if(mVal==mVisit[2*readId+pairId-1]&&s1Val==s1Visit[2*readId+pairId-1]&&s2Val==s2Visit[2*readId+pairId-1])
+				else if(mVal==mVisit[2*readId+pairId-1])
 						qVisit[2*readId+pairId-1]=0;
 
 			}
