@@ -1,0 +1,34 @@
+CXX=g++-49
+CPPFLAGS=-c
+OPTFLAGS=-O3 -Wall
+LIBPATH=-ICommon -ldl
+LDFLAGS=-fopenmp
+
+EXEC1=prt
+EXEC2=dsp
+EXEC3=mrg
+
+
+all: $(EXEC1) $(EXEC2) $(EXEC3)
+
+SRCS1=prt.cpp
+SRCS2=dsp.cpp Common/Uncompress.cpp Common/SignalHandler.cpp Common/Fcontrol.cpp
+SRCS3=mrg.cpp
+
+$(EXEC1):$(SRCS1)
+	$(CXX) $(OPTFLAGS) -o $@ $^
+
+$(EXEC2):$(SRCS2)
+	$(CXX) $(OPTFLAGS) $(LDFLAGS) $(LIBPATH) -o $@ $^
+
+$(EXEC3):$(SRCS3)
+	$(CXX) $(OPTFLAGS) -o $@ $^ 
+
+dida_mpi: dida_mpi.cpp
+	mpic++ -ICommon -O3 -fopenmp -o dida_mpi dida_mpi.cpp partition.cpp Common/Uncompress.cpp Common/SignalHandler.cpp Common/Fcontrol.cpp -ldl -Wall
+dida_mpi_intel:	dida_mpi.cpp
+	mpiicpc -mt_mpi -ICommon -O3 -openmp -o dida_mpi dida_mpi.cpp partition.cpp Common/Uncompress.cpp Common/SignalHandler.cpp Common/Fcontrol.cpp -ldl -Wall
+
+clean:
+	rm $(EXEC1) $(EXEC2) $(EXEC3) 
+

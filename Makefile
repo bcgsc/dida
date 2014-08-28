@@ -1,27 +1,23 @@
-CXX=g++
-MPICXX=mpiCC
-CPPFLAGS=-c
-OPTFLAGS=-O3
-LIBPATH=-ICommon
-LDFLAGS=-fopenmp
+all: dida
 
-EXEC1=dida
-EXEC2=dsp
+dida: dida.cpp
+	g++-49 -I/home/hmohamadi/openmpi-1.6.5/include -pthread -L/home/hmohamadi/openmpi-1.6.5/lib -lmpi_cxx -lmpi -ldl -lm -Wl,--export-dynamic -lrt -lnsl -lutil -lm -ICommon -O3 -fopenmp -o bin/dida dida-3step.cpp Common/prt.cpp Common/Uncompress.cpp Common/SignalHandler.cpp Common/Fcontrol.cpp -Wall
 
-all: $(EXEC1) $(EXEC2)
+dida-3step: dida-3step.cpp
+	g++-49 -I/home/hmohamadi/openmpi-1.6.5/include -pthread -L/home/hmohamadi/openmpi-1.6.5/lib -lmpi_cxx -lmpi -ldl -lm -Wl,--export-dynamic -lrt -lnsl -lutil -lm -ICommon -O3 -fopenmp -o bin/dida dida-3step.cpp Common/prt.cpp Common/Uncompress.cpp Common/SignalHandler.cpp Common/Fcontrol.cpp -Wall
 
-SRCS1=dida.cpp partition.cpp merge.cpp
+dida-working: dida-working.cpp
+	g++-49 -I/home/hmohamadi/openmpi-1.6.5/include -pthread -L/home/hmohamadi/openmpi-1.6.5/lib -lmpi_cxx -lmpi -ldl -lm -Wl,--export-dynamic -lrt -lnsl -lutil -lm -ICommon -O3 -fopenmp -o bin/dida dida-working.cpp -Wall
+#	mpic++ -ICommon -O3 -fopenmp -o bin/dida dida.cpp -ldl -Wall
 
-SRCS2=dsp.cpp Common/HashManager.cpp Common/BloomFilter.cpp Common/city.cc
+intel: dida.cpp
+	mpiicpc -mt_mpi -ICommon -O3 -openmp -o bin/dida dida.cpp -ldl -Wall
 
-$(EXEC1):$(SRCS1)
-	$(MPICXX) $(OPTFLAGS) -o $@ $^
+#dida: dida.cpp
+#	mpic++ -ICommon -O3 -fopenmp -o bin/dida dida.cpp Common/Uncompress.cpp Common/SignalHandler.cpp Common/Fcontrol.cpp -ldl -Wall
 
-$(EXEC2):$(SRCS2)
-	$(CXX) $(OPTFLAGS) $(LDFLAGS) $(LIBPATH) -o $@ $^
-    
+#idida: dida.cpp
+#	mpiicpc -mt_mpi -ICommon -O3 -openmp -o bin/dida dida.cpp Common/Uncompress.cpp Common/SignalHandler.cpp Common/Fcontrol.cpp -ldl -Wall
+
 clean:
-	rm -rf *.o
-
-cleanest: clean
-	rm -rf $(EXEC1) $(EXEC2)
+	rm bin/dida
