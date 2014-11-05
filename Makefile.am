@@ -13,4 +13,5 @@ dida_SOURCES = \
 	Common/Fcontrol.h \
 	Common/prt.cpp \
 	Common/prt.h \
+	Common/StringUtil.h \
 	dida.cpp
