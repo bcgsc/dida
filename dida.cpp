@@ -1,4 +1,4 @@
-#include "mpi.h"
+#include <mpi.h>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -102,6 +102,8 @@ size_t getInfo(const char *aName, unsigned k){
 	return totItm;
 }
 
+// MurmurHash2, 64-bit versions, by Austin Appleby
+// https://sites.google.com/site/murmurhash/MurmurHash2_64.cpp?attredirects=0
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed ){
 	const uint64_t m = 0xc6a4a7935bd1e995;
 	const int r = 47;
@@ -176,8 +178,7 @@ static inline char rc(char c) {
     return c;
 }
 
-struct samRec
-{
+struct samRec {
     unsigned SamOrd;
     std::string SamQn;
     int SamFg;
@@ -208,6 +209,30 @@ std::ostream& operator<<(std::ostream& os, const samRec& c){
     return os;
 }
 
+bool is_empty(std::ifstream& pFile) {
+    return pFile.peek() == std::ifstream::traits_type::eof();
+}
+
+std::ifstream::pos_type filesize(const char* filename)
+{
+    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+    return in.tellg();
+}
+
+void wait_for_index() {
+    std::ifstream::pos_type maxSize = 0, refSize=0;
+    for (int i=1; i <= opt::pnum; ++i) {
+        std::ostringstream ref_stm;
+        ref_stm << "mref-" << i << ".fa";
+        refSize = filesize(ref_stm.str().c_str());
+        if( refSize > maxSize)
+            maxSize = refSize;
+    }
+    double indTime = maxSize * 1800.0 / 3000000000.0;
+    std::cerr << "est index time = " << indTime << "\n";
+    sleep((unsigned)indTime);
+}
+
 void dida_index(const int procRank, const int procSize, const char *refName) {
 	if (procRank < procSize-1 && procRank > 0) {
 		getPrt(refName, opt::pnum, procRank);
@@ -217,16 +242,24 @@ void dida_index(const int procRank, const int procSize, const char *refName) {
 		   exit(2);
 	   }
 	   if (pid == 0) {
-			std::stringstream indstm;
-			indstm << "mref-" << procRank << ".fa";
-			execlp("abyss-index", "abyss-index", indstm.str().c_str(), (char *)0);
+           
+           std::ostringstream amap_ind_stm;
+           amap_ind_stm << "mref-" << procRank << ".fa";
+           execlp("abyss-index", "abyss-index", amap_ind_stm.str().c_str(), (char *)0);
+
+           /*std::ostringstream bow_ind_stm, bow_tind_stm;
+           bow_ind_stm << "mref-" << procRank << ".fa";
+           bow_tind_stm << "mref-" << procRank;
+           execlp("bowtie2-build", "bowtie2-build", bow_ind_stm.str().c_str(), bow_tind_stm.str().c_str(), (char *)0);*/
 	   }
+        else
+            wait_for_index();
 	}
 }
 
 void dida_dispatch(const int procRank, const int procSize, const char *libName, const char *refName) {
    	if (procRank==0) {
-   		dgetPrt(refName, opt::pnum, procRank);
+        dgetPrt(refName, opt::pnum, procRank);
    		int readLen=0, recLen=0;
         std::cerr << "Number of hash functions=" << opt::nhash << "\n";
 
@@ -247,8 +280,9 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
             sstm << opt::rdir << "dmref-" << pIndex+1 << ".fa";
             size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
             myFilters[pIndex].resize(filterSize);
+            //myFilters[pIndex].resize(filterSize, 1);
+            
             std::ifstream uFile(sstm.str().c_str());
-
             std::string line;
             while (getline(uFile, line)){
                 getline(uFile, line);
@@ -332,11 +366,11 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
                         //END preprocess k-mer
                         if (filContain(myFilters, pIndex-1, bMer)) {
 							#pragma omp critical
-                        		dspRead = true;
+							dspRead = true;
 							MPI_Send(&recLen, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
-							MPI_Send(&readRec[0], recLen, MPI_CHAR, pIndex, 0, MPI_COMM_WORLD);
+							MPI_Send(&readRec[0], recLen+1, MPI_CHAR, pIndex, 0, MPI_COMM_WORLD);
 							MPI_Send(&pIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
-                            break;
+							break;
                         }
                         j+=opt::bmer;
                     }
@@ -345,7 +379,7 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
                 	++notDsp;
                 	int rndIndex = notDsp%opt::pnum + 1;
                 	MPI_Send(&recLen, 1, MPI_INT, rndIndex, 0, MPI_COMM_WORLD);
-					MPI_Send(&readRec[0], recLen, MPI_CHAR, rndIndex, 0, MPI_COMM_WORLD);
+					MPI_Send(&readRec[0], recLen+1, MPI_CHAR, rndIndex, 0, MPI_COMM_WORLD);
 					MPI_Send(&rndIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
                 }
                 ++readId;
@@ -391,13 +425,12 @@ void dida_align(const int procRank, const int procSize) {
             {
                 #pragma omp section
                 {
-
                 	for(;;) {
 					   MPI_Recv(&recLen, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
 					   if(recLen==-1) break;
 					   char *readbuf = new char [recLen + 1];
-					   MPI_Recv(readbuf,recLen,MPI_CHAR,0,0,MPI_COMM_WORLD,&status);
-					   std::string myRead(readbuf, readbuf+recLen-1);
+					   MPI_Recv(readbuf,recLen+1,MPI_CHAR,0,0,MPI_COMM_WORLD,&status);
+                       std::string myRead(readbuf, readbuf+recLen);
 					   delete [] readbuf;
 					   fprintf(stdout, "%s\n",myRead.c_str());
 				   }
@@ -410,9 +443,9 @@ void dida_align(const int procRank, const int procSize) {
                     ssize_t lineLen;
                     while ((lineLen = getline(&line, &lineByte, stdin)) != -1) {
                     	if (line[0]!='@') {
-                    		MPI_Send(&lineLen, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
-                    		MPI_Send(line, lineLen, MPI_CHAR, procSize-1, 0, MPI_COMM_WORLD);
-                    	}
+                            MPI_Send(&lineLen, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
+                    		MPI_Send(line, lineLen+1, MPI_CHAR, procSize-1, 0, MPI_COMM_WORLD);
+                        }
                     }
                     free(line);
                     lineLen=-1;
@@ -427,11 +460,32 @@ void dida_align(const int procRank, const int procSize) {
             close(fd2[READ]);
             dup2(fd2[WRITE],1);
             close(fd2[WRITE]);
-            std::stringstream amapstm, lstm, jstm;
-            amapstm << "mref-" << procRank << ".fa";
-            lstm << "-l" << opt::bmer;
-            jstm << "-j" << omp_get_max_threads()-2;
-            execlp("abyss-map", "abyss-map", "--order", jstm.str().c_str(), lstm.str().c_str(), "-", amapstm.str().c_str(), (char *)0);
+           
+            
+            /*execlp("malign", "malign", (char *) 0);
+            perror("malign failed");
+            exit(3);*/
+            
+            /*std::ifstream reffile(amapstm.str().c_str());
+            if (!reffile)
+                std::cerr<<"no file\n";
+            else
+                std::cerr<<"file exists\n";
+            if (is_empty(reffile))
+                std::cerr << "reffile is empty\n";
+            else
+                std::cerr<<"file in not empty\n";*/
+            
+            std::ostringstream amap_j_stm, amap_ref_stm, amap_l_stm;
+            amap_j_stm << "-j" << omp_get_max_threads()-2;
+            amap_ref_stm << "mref-" << procRank << ".fa";
+            amap_l_stm << "-l" << opt::bmer;
+            execlp("abyss-map", "abyss-map", "--order", amap_j_stm.str().c_str(), amap_l_stm.str().c_str(), "-", amap_ref_stm.str().c_str(), (char *)0);
+            
+            /*std::ostringstream bow_x_stm, bow_p_stm;
+            bow_x_stm << "-xmref-" << procRank;
+            bow_p_stm << "-p" << omp_get_max_threads()-2;
+            execlp("bowtie2-align", "bowtie2-align", "-f", "--reorder", bow_p_stm.str().c_str(), bow_x_stm.str().c_str(), "-U-", (char *)0);*/
         }
     }
 }
@@ -482,9 +536,9 @@ void dida_merge(const int procRank, const int procSize) {
 			MPI_Recv(&alnId, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
 			if(alnId==-1) break;
 			MPI_Recv(&isize, 1, MPI_INT, alnId, 0, MPI_COMM_WORLD, &status);
-			char *readbuf = new char [isize];
-			MPI_Recv(readbuf, isize, MPI_CHAR, alnId, 0, MPI_COMM_WORLD, &status);
-			std::string sambuf(readbuf, readbuf+isize-1);
+			char *readbuf = new char [isize+1];
+			MPI_Recv(readbuf, isize+1, MPI_CHAR, alnId, 0, MPI_COMM_WORLD, &status);
+			std::string sambuf(readbuf, readbuf+isize);
 			delete [] readbuf;
 			samRec cRec = recLoad(sambuf,alnId);
 			if (cRec.SamOrd == samCounter) {
@@ -503,6 +557,24 @@ void dida_merge(const int procRank, const int procSize) {
 		comFile.close();
 		std::cout << "dida finished successfully!\n";
 	}
+    // Merge process for Bowtie
+    /*if (procRank==procSize-1) {
+		MPI_Status status;
+        std::ofstream comFile("aln.sam", std::ios_base::app);
+        int isize=0, alnId=0;
+        for(;;) {
+            MPI_Recv(&alnId, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+			if(alnId==-1) break;
+			MPI_Recv(&isize, 1, MPI_INT, alnId, 0, MPI_COMM_WORLD, &status);
+			char *readbuf = new char [isize+1];
+			MPI_Recv(readbuf, isize+1, MPI_CHAR, alnId, 0, MPI_COMM_WORLD, &status);
+			std::string sambuf(readbuf, readbuf+isize);
+			delete [] readbuf;
+            comFile<<sambuf;
+        }
+        comFile.close();
+        std::cout << "dida finished successfully!\n";
+    }*/
 }
 
 int main(int argc, char** argv) {
