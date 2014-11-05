@@ -50,16 +50,16 @@ static const char USAGE_MESSAGE[] =
 namespace opt {
 	/** Number of bits per item. */
 	unsigned ibits = 8;
-    
+
 	/** The number of parallel threads. */
 	static unsigned threads = 0;
-    
+
 	/** The number of partitions. */
 	static int pnum = 1;
-    
+
 	/** The number of hash functions. */
 	int nhash = 5;
-    
+
 	/** The size of a k-mer. */
 	int bmer = 20;
 
@@ -109,26 +109,26 @@ size_t getInfo(const char *aName, unsigned k){
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed ){
 	const uint64_t m = 0xc6a4a7935bd1e995;
 	const int r = 47;
-    
+
 	uint64_t h = seed ^ (len * m);
-    
+
 	const uint64_t * data = (const uint64_t *)key;
 	const uint64_t * end = data + (len/8);
-    
+
 	while(data != end)
 	{
 		uint64_t k = *data++;
-        
+
 		k *= m;
 		k ^= k >> r;
 		k *= m;
-		
+
 		h ^= k;
 		h *= m;
 	}
-    
+
 	const unsigned char * data2 = (const unsigned char*)data;
-    
+
 	switch(len & 7)
 	{
         case 7: h ^= uint64_t(data2[6]) << 48;
@@ -140,11 +140,11 @@ uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed ){
         case 1: h ^= uint64_t(data2[0]);
 	        h *= m;
 	};
-    
+
 	h ^= h >> r;
 	h *= m;
 	h ^= h >> r;
-    
+
 	return h;
 }
 
@@ -244,7 +244,6 @@ void dida_index(const int procRank, const int procSize, const char *refName) {
 		   exit(2);
 	   }
 	   if (pid == 0) {
-           
            std::ostringstream amap_ind_stm;
            amap_ind_stm << "mref-" << procRank << ".fa";
            execlp("abyss-index", "abyss-index", amap_ind_stm.str().c_str(), (char *)0);
@@ -283,7 +282,7 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
             size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
             myFilters[pIndex].resize(filterSize);
             //myFilters[pIndex].resize(filterSize, 1);
-            
+
             std::ifstream uFile(sstm.str().c_str());
             std::string line;
             while (getline(uFile, line)){
@@ -462,12 +461,11 @@ void dida_align(const int procRank, const int procSize) {
             close(fd2[READ]);
             dup2(fd2[WRITE],1);
             close(fd2[WRITE]);
-           
-            
+
             /*execlp("malign", "malign", (char *) 0);
             perror("malign failed");
             exit(3);*/
-            
+
             /*std::ifstream reffile(amapstm.str().c_str());
             if (!reffile)
                 std::cerr<<"no file\n";
@@ -477,13 +475,13 @@ void dida_align(const int procRank, const int procSize) {
                 std::cerr << "reffile is empty\n";
             else
                 std::cerr<<"file in not empty\n";*/
-            
+
             std::ostringstream amap_j_stm, amap_ref_stm, amap_l_stm;
             amap_j_stm << "-j" << omp_get_max_threads()-2;
             amap_ref_stm << "mref-" << procRank << ".fa";
             amap_l_stm << "-l" << opt::bmer;
             execlp("abyss-map", "abyss-map", "--order", amap_j_stm.str().c_str(), amap_l_stm.str().c_str(), "-", amap_ref_stm.str().c_str(), (char *)0);
-            
+
             /*std::ostringstream bow_x_stm, bow_p_stm;
             bow_x_stm << "-xmref-" << procRank;
             bow_p_stm << "-p" << omp_get_max_threads()-2;
