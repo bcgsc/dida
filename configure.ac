@@ -1,5 +1,5 @@
 AC_PREREQ(2.62)
-AC_INIT(DIDA, 1.0, hmohamadi@bcgsc.ca, dida,
+AC_INIT(DIDA, 0-1.3, hmohamadi@bcgsc.ca, dida,
 		http://www.bcgsc.ca/platform/bioinfo/software/dida)
 AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_SRCDIR([dida.cpp])
