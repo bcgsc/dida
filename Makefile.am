@@ -1,10 +1,10 @@
-bin_PROGRAMS = dida
+bin_PROGRAMS = dida-mpi
 
-dida_CPPFLAGS = -I$(top_srcdir)/Common
+dida_mpi_CPPFLAGS = -I$(top_srcdir)/Common
 
-dida_LDADD = $(MPI_LIBS)
+dida_mpi_LDADD = $(MPI_LIBS)
 
-dida_SOURCES = \
+dida_mpi_SOURCES = \
 	Common/Uncompress.cpp \
 	Common/Uncompress.h \
 	Common/SignalHandler.cpp \
