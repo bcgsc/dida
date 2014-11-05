@@ -1,3 +1,7 @@
+#include "config.h"
+#include "Uncompress.h"
+#include "prt.h"
+
 #include <mpi.h>
 #include <string>
 #include <iostream>
@@ -7,7 +11,6 @@
 #include <list>
 #include <getopt.h>
 #include <assert.h>
-#include "Uncompress.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,8 +19,7 @@
 #include <fcntl.h>
 #include <algorithm>
 #include <queue>
-# include <omp.h>
-#include "prt.h"
+#include <omp.h>
 
 #define PROGRAM "dida-mpi"
 #define READ 0
