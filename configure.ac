@@ -60,9 +60,6 @@ if test -z $OPENMP_CXXFLAGS; then
 fi
 AC_LANG_POP([C++])
 
-# Make sure we have pthreads
-AC_CHECK_LIB([pthread], [pthread_create])
-
 # MPI
 AC_ARG_WITH(mpi, AS_HELP_STRING([--with-mpi=PATH],
 	[specify prefix directory for the installed MPI parallel
@@ -82,7 +79,7 @@ my_abs_srcdir=$(cd $srcdir; pwd)
 
 # Set compiler flags
 AC_SUBST(CPPFLAGS,
-		 "-I$my_abs_srcdir $mpi_cppflags $CPPFLAGS")
+		 "-I$my_abs_srcdir $mpi_cppflags $OPENMP_CXXFLAGS $CPPFLAGS")
 AC_SUBST(LDFLAGS, "$mpi_ldflags $OPENMP_CXXFLAGS $LDFLAGS")
 
 # Check for the MPI parallel computing library.
@@ -93,10 +90,12 @@ AC_DEFINE(OMPI_SKIP_MPICXX, 1,
 		  [Define to disable OpenMPI C++ bindings])
 AC_CHECK_HEADERS([mpi.h])
 if test "$enable_mpich"; then
+	AC_CHECK_LIB([pthread], [pthread_create])
 	AC_CHECK_LIB([mpl], [MPL_env2int])
 	AC_CHECK_LIB([mpich], [MPI_Init])
 	ac_cv_lib_mpi_MPI_Init=$ac_cv_lib_mpich_MPI_Init
 elif test "$enable_lammpi"; then
+	AC_CHECK_LIB([pthread], [pthread_create])
 	AC_CHECK_LIB([dl], [dlopen])
 	AC_CHECK_LIB([lam], [lam_mutex_lock])
 	AC_CHECK_LIB([mpi], [MPI_Init])
@@ -110,6 +109,8 @@ fi
 if test $ac_cv_header_mpi_h != yes -o $ac_cv_lib_mpi_MPI_Init != yes; then
 	AC_MSG_ERROR([DIDA must be compiled with MPI support.])
 fi
+
+AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 AC_SUBST(MPI_LIBS, "$LIBS")
 LIBS="$libs"

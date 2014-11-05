@@ -226,7 +226,7 @@ std::vector<int> compDist(std::vector< std::vector<int> > &conComp, std::vector<
     return disVec;
 }
 
-void distPar(const char *uName, const int pNum, std::vector<int> &disArr, const int procRank) {
+void distPar(const char *uName, const int, std::vector<int> &disArr, const int procRank) {
 
 	std::string aPath, uPath, bName, eName;
 	getFname(uName, bName, eName);
