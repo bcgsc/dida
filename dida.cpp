@@ -22,8 +22,9 @@
 #include <omp.h>
 
 #define PROGRAM "dida-mpi"
-#define READ 0
-#define WRITE 1
+
+const unsigned READ = 0;
+const unsigned WRITE = 1;
 
 
 static const char VERSION_MESSAGE[] =
@@ -399,6 +400,22 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
     }
 }
 
+/* Redirect STDOUT to input of fd. */
+void stdout_to_pipe(int fd[])
+{
+	close(fd[READ]);
+	dup2(fd[WRITE], STDOUT_FILENO);
+	close(fd[WRITE]);
+}
+
+/* Redirect the output of fd to STDIN. */
+void pipe_to_stdin(int fd[])
+{
+	close(fd[WRITE]);
+	dup2(fd[READ], STDIN_FILENO);
+	close(fd[READ]);
+}
+
 void dida_align(const int procRank, const int procSize) {
     if (procRank < procSize-1 && procRank > 0) {
     	MPI_Status status;
@@ -416,12 +433,9 @@ void dida_align(const int procRank, const int procSize) {
         }
 
         if(pid != 0) {
-            close(fd[READ]);
-            dup2(fd[WRITE],1);
-            close(fd[WRITE]) ;
-            close(fd2[WRITE]);
-            dup2(fd2[READ],0);
-            close(fd2[READ]);
+            stdout_to_pipe(fd);
+            pipe_to_stdin(fd2);
+
             #pragma omp parallel sections
             {
                 #pragma omp section
@@ -455,12 +469,8 @@ void dida_align(const int procRank, const int procSize) {
             }
         }
         else {
-            close(fd[WRITE]);
-            dup2(fd[READ], 0);
-            close(fd[READ]);
-            close(fd2[READ]);
-            dup2(fd2[WRITE],1);
-            close(fd2[WRITE]);
+            stdout_to_pipe(fd2);
+            pipe_to_stdin(fd);
 
             /*execlp("malign", "malign", (char *) 0);
             perror("malign failed");
