@@ -12,8 +12,8 @@ reads=reads.fq
 aligns=aln.sam
 
 # number of MPI tasks
-np:=2
-# number of target partitions 
+np:=4
+# number of target partitions
 p:=2
 # number of threads per task
 j:=1
