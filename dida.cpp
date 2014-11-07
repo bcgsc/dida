@@ -279,7 +279,7 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
 #pragma omp parallel for shared(myFilters) private(pIndex) schedule(static,chunk)
         for (pIndex=0; pIndex<opt::pnum; ++pIndex){
             std::stringstream sstm;
-            sstm << opt::rdir << "mref-" << pIndex+1 << ".fa";
+            sstm << opt::rdir << "dmref-" << pIndex+1 << ".fa";
             size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
             myFilters[pIndex].resize(filterSize);
             //myFilters[pIndex].resize(filterSize, 1);
@@ -490,6 +490,7 @@ void dida_align(const int procRank, const int procSize) {
             amap_j_stm << "-j" << omp_get_max_threads()-2;
             amap_ref_stm << "mref-" << procRank << ".fa";
             amap_l_stm << "-l" << opt::bmer;
+
             execlp("abyss-map", "abyss-map", "--order", amap_j_stm.str().c_str(), amap_l_stm.str().c_str(), "-", amap_ref_stm.str().c_str(), (char *)0);
 
             /*std::ostringstream bow_x_stm, bow_p_stm;
