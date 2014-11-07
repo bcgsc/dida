@@ -279,7 +279,7 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
 #pragma omp parallel for shared(myFilters) private(pIndex) schedule(static,chunk)
         for (pIndex=0; pIndex<opt::pnum; ++pIndex){
             std::stringstream sstm;
-            sstm << opt::rdir << "dmref-" << pIndex+1 << ".fa";
+            sstm << opt::rdir << "mref-" << pIndex+1 << ".fa";
             size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
             myFilters[pIndex].resize(filterSize);
             //myFilters[pIndex].resize(filterSize, 1);
