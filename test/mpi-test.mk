@@ -29,5 +29,8 @@ $(ref):
 $(reads):
 	curl $(reads_url) | gunzip -c | head -10000 > $(reads)
 
-$(aligns):  $(reads) $(ref)
-	mpirun -np $(np) dida-mpi -p$p -j$j -b$b $(reads) $(ref)
+$(reads).in: $(reads)
+	for read in $(reads); do echo $$read; done >$(reads).in
+
+$(aligns):  $(reads).in $(ref)
+	mpirun -np $(np) dida-mpi --se -p$p -j$j -b$b $(reads).in $(ref)
