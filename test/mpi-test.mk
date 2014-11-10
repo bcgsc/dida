@@ -20,6 +20,8 @@ j:=1
 # kmer size for bloom filters
 b:=50
 
+.PHONY: clean
+
 default: $(aligns)
 
 # download ref and split into chunks of 100,000bp or less
@@ -34,3 +36,6 @@ $(reads).in: $(reads)
 
 $(aligns):  $(reads).in $(ref)
 	mpirun -np $(np) dida-mpi --se -p$p -j$j -b$b $(reads).in $(ref)
+
+clean:
+	rm -f $(aligns) *mref*
