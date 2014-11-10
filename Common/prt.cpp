@@ -323,7 +323,87 @@ void ddistPar(const char *uName, const int pNum, std::vector<int> &disArr) {
 	uFile.close();
 }
 
-void distTarget(const char *uName, const int pNum) {
+void distTarget(const char *uName, const int pNum, const int procRank) {
+	std::ifstream uFile(uName);
+	std::vector<int> lenArr;
+	std::string hLine, sLine, line;
+	long totLen = 0;
+	int uLen = 0, minUlen=((unsigned) 1 << 31) -1;
+	getline(uFile, line);
+	while (getline(uFile, line)) {
+		if (line[0] != '>')
+			uLen += line.length();
+		else {
+			if (uLen < minUlen)
+				minUlen = uLen;
+			totLen += uLen;
+			lenArr.push_back(uLen);
+			uLen = 0;
+		}
+	}
+	totLen += uLen;
+	lenArr.push_back(uLen);
+    
+	std::cout << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
+    
+	int tLen = lenArr.size();
+	std::vector<int> indArr(tLen);
+	for (int i=0;i<tLen;++i)
+		indArr[i]=i;
+	tSort(lenArr, indArr, 0, lenArr.size()-1);
+    
+	long nodeSize = totLen/pNum + pNum + 500;
+    
+	std::vector<long> nodeCap(pNum, nodeSize);
+	std::vector<int> disArr(lenArr.size(),-1);
+    
+	for (unsigned i=0; i < lenArr.size(); ++i) {
+		if (lenArr[indArr[i]] <= nodeSize) {
+			int bNode = findBnode(lenArr[indArr[i]], nodeCap, totLen);
+			if (bNode!=-1) {
+				disArr[indArr[i]] = bNode;
+				nodeCap[bNode]-=lenArr[indArr[i]];
+			}
+			else {
+				std::cerr << "Error in distributing target! size of target is greater than available node cap.\n" << lenArr[indArr[i]] << "\n";
+				exit(EXIT_FAILURE);
+			}
+		}
+		else {
+			std::cerr << "Error in distributing target! size of target is greater than whole node cap.\n";
+			exit(EXIT_FAILURE);
+		}
+	}
+    
+	uFile.clear();
+	uFile.seekg(0,uFile.beg);
+	std::ofstream puFile;
+
+    std::stringstream ustm;
+    ustm << "mref-" << procRank << ".fa";
+    puFile.open(ustm.str().c_str());
+    
+	int tIndex=0;
+	getline(uFile, line);
+    if (disArr[tIndex]==procRank-1)
+        puFile << line << "\n";
+    
+	while (getline(uFile, line)) {
+		if (line[0] != '>') {
+            if (disArr[tIndex]==procRank-1)
+                puFile << line << "\n";
+        }
+		else {
+			++tIndex;
+            if (disArr[tIndex]==procRank-1)
+                puFile << line << "\n";
+		}
+	}
+	puFile.close();
+	uFile.close();
+}
+
+void ddistTarget(const char *uName, const int pNum) {
 	std::ifstream uFile(uName);
 	std::vector<int> lenArr;
 	std::string hLine, sLine, line;
@@ -380,7 +460,7 @@ void distTarget(const char *uName, const int pNum) {
 	std::ofstream puFile[pNum];
 	for (int i = 0; i < pNum; ++i) {
 		std::stringstream ustm;
-        ustm << "mref-" << i+1 << ".fa";
+        ustm << "dmref-" << i+1 << ".fa";
 		puFile[i].open(ustm.str().c_str());
 	}
 
@@ -431,7 +511,7 @@ int getPrt(const char *uName, const int pNum, const int procRank) {
 	}
 	else {
 		std::cerr << "Static target partitioning.\n";
-		distTarget(uName, pNum);
+		distTarget(uName, pNum, procRank);
 	}
 
 	std::cerr << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
@@ -452,7 +532,7 @@ int dgetPrt(const char *uName, const int pNum, const int procRank) {
 	}
 	else {
 		std::cout << "Static target partitioning.\n";
-		distTarget(uName, pNum);
+		ddistTarget(uName, pNum);
 	}
 
 	std::cout << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
