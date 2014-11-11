@@ -27,7 +27,7 @@ p:=2
 # number of threads per task
 j:=1
 # kmer size for bloom filters
-b:=20
+b:=80
 
 #------------------------------------------------------------
 # abyss-map
@@ -44,7 +44,7 @@ l:=$b
 default: identity_test
 
 clean:
-	rm -f $(dida_sam) $(abyss_map_sam) *mref*
+	rm -f $(dida_sam) $(abyss_map_sam) *mref* *.lines
 
 #------------------------------------------------------------
 # downloading/building test input data 
