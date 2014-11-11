@@ -41,7 +41,9 @@ static const char USAGE_MESSAGE[] =
 "\n"
 "  -p, --partition=N       divide reference to N partitions\n"
 "  -j, --threads=N         use N parallel threads [partitions]\n"
-"  -b, --bfl=N             use N bp for Bloom filter windows[1]\n"
+"  -l, --alen=N            the minimum alignment length [20]\n"
+"  -b, --bmer=N            size of a bmer [alen/2]\n"
+"  -s, --step=N            step size used when breaking a query sequence into bmers [bmer]\n"
 "  -h, --hash=N            use N hash functions for Bloom filter [6]\n"
 "      --help              display this help and exit\n"
 "      --version           output version information and exit\n"
@@ -61,8 +63,14 @@ namespace opt {
 	/** The number of hash functions. */
 	int nhash = 5;
 
-	/** The size of a k-mer. */
-	int bmer = 20;
+	/** Minimum alignment length. */
+	int alen = 20;
+
+	/** The size of a b-mer. */
+	int bmer = -1;
+
+	/** The step size when breaking a read into b-mers. */
+	int bmer_step = -1;
 
 	/** dir of subtargets. */
 	std::string rdir = "./";
@@ -74,14 +82,16 @@ namespace opt {
 	static int fq;
 }
 
-static const char shortopts[] = "p:b:j:d:h:";
+static const char shortopts[] = "p:s:l:b:j:d:h:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "threads",	required_argument, NULL, 'j' },
 	{ "partition",	required_argument, NULL, 'p' },
-	{ "bfl",	required_argument, NULL, 'b' },
+	{ "bmer",	required_argument, NULL, 'b' },
+	{ "alen",	required_argument, NULL, 'l' },
+	{ "step",	required_argument, NULL, 's' },
 	{ "hash",	required_argument, NULL, 'h' },
 	{ "refdir",	required_argument, NULL, 'd' },
 	{ "se",	no_argument, &opt::se, 1 },
@@ -374,7 +384,7 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
 							MPI_Send(&pIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
 							break;
                         }
-                        j+=opt::bmer;
+                        j+=opt::bmer_step;
                     }
                 }
                 if (!dspRead) {
@@ -489,7 +499,7 @@ void dida_align(const int procRank, const int procSize) {
             std::ostringstream amap_j_stm, amap_ref_stm, amap_l_stm;
             amap_j_stm << "-j" << omp_get_max_threads()-2;
             amap_ref_stm << "mref-" << procRank << ".fa";
-            amap_l_stm << "-l" << opt::bmer;
+            amap_l_stm << "-l" << opt::alen;
 
             execlp("abyss-map", "abyss-map", "--order", amap_j_stm.str().c_str(), amap_l_stm.str().c_str(), "-", amap_ref_stm.str().c_str(), (char *)0);
 
@@ -600,6 +610,10 @@ int main(int argc, char** argv) {
 				arg >> opt::threads; break;
 			case 'b':
 				arg >> opt::bmer; break;
+			case 'l':
+				arg >> opt::alen; break;
+			case 's':
+				arg >> opt::bmer_step; break;
 			case 'p':
 				arg >> opt::pnum; break;
 			case 'd':
@@ -620,19 +634,30 @@ int main(int argc, char** argv) {
 			exit(EXIT_FAILURE);
 		}
 	}
-	if (opt::bmer == 0) {
-		std::cerr << PROGRAM ": missing mandatory option `-b'\n";
+
+	if (opt::alen <= 0) {
+		std::cerr << PROGRAM ": alignment length must at least 1.\n";
 		die = true;
 	}
+
 	if (argc - optind != 2) {
 		std::cerr << PROGRAM ": missing arguments\n";
 		die = true;
 	}
 	if (die) {
 		std::cerr << "Try `" << PROGRAM
-		<< " --help' for more information.\n";
+			<< " --help' for more information.\n";
 		exit(EXIT_FAILURE);
 	}
+
+	if (opt::bmer <= 0)
+		opt::bmer = opt::alen / 2;
+
+	if (opt::bmer_step <= 0)
+		opt::bmer_step = opt::bmer;
+	std::cerr << "bmer=" << opt::bmer
+			<< " alen=" << opt::alen
+			<< " bmer_step=" << opt::bmer_step << std::endl;
 
 	const char *libName(argv[argc-2]);
 	const char *refName(argv[argc-1]);
