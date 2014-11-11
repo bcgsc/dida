@@ -360,17 +360,21 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
                         }
                         //END preprocess k-mer
                         if (filContain(myFilters, pIndex-1, bMer)) {
-							#pragma omp critical
-							dspRead = true;
-							MPI_Send(&recLen, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
-							MPI_Send(&readRec[0], recLen+1, MPI_CHAR, pIndex, 0, MPI_COMM_WORLD);
-							MPI_Send(&pIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
-							break;
+                            #pragma omp critical
+                            {
+                                dspRead = true;
+                                MPI_Send(&recLen, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
+                                MPI_Send(&readRec[0], recLen+1, MPI_CHAR, pIndex, 0, MPI_COMM_WORLD);
+                                MPI_Send(&pIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
+                            }
+                            break;
                         }
                         j+=opt::bmer_step;
                     }
                 }
-                if (!dspRead) {
+                if (!dspRead)
+                #pragma omp critical
+                {
                 	++notDsp;
                 	int rndIndex = notDsp%opt::pnum + 1;
                 	MPI_Send(&recLen, 1, MPI_INT, rndIndex, 0, MPI_COMM_WORLD);
@@ -387,9 +391,12 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
         }
         libFile.close();
         int minImpi = -1;
-        for(int pIndex = 1; pIndex<=opt::pnum; ++pIndex)
-            MPI_Send(&minImpi, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
-        MPI_Send(&minImpi, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
+        #pragma omp critical
+        {
+            for(int pIndex = 1; pIndex<=opt::pnum; ++pIndex)
+                MPI_Send(&minImpi, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
+            MPI_Send(&minImpi, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
+        }
     }
 }
 
@@ -431,12 +438,15 @@ void dida_align(const int procRank, const int procSize) {
 
             #pragma omp parallel sections
             {
+                // receive reads from dispatch process
                 #pragma omp section
                 {
                 	for(;;) {
+                       #pragma omp critical
 					   MPI_Recv(&recLen, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
 					   if(recLen==-1) break;
 					   char *readbuf = new char [recLen + 1];
+                       #pragma omp critical
 					   MPI_Recv(readbuf,recLen+1,MPI_CHAR,0,0,MPI_COMM_WORLD,&status);
                        std::string myRead(readbuf, readbuf+recLen);
 					   delete [] readbuf;
@@ -444,19 +454,24 @@ void dida_align(const int procRank, const int procSize) {
 				   }
                     close(STDOUT_FILENO);
                 }
+
+                // send SAM alignments to merge process
                 #pragma omp section
                 {
                     char *line = NULL;
                     size_t lineByte = 0;
                     ssize_t lineLen;
                     while ((lineLen = getline(&line, &lineByte, stdin)) != -1) {
-                    	if (line[0]!='@') {
+                        if (line[0]!='@')
+                        #pragma omp critical
+                        {
                             MPI_Send(&lineLen, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
                     		MPI_Send(line, lineLen+1, MPI_CHAR, procSize-1, 0, MPI_COMM_WORLD);
                         }
                     }
                     free(line);
                     lineLen=-1;
+                    #pragma omp critical
                     MPI_Send(&lineLen, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
                 }
             }
