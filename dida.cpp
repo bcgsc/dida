@@ -26,7 +26,6 @@
 const unsigned READ = 0;
 const unsigned WRITE = 1;
 
-
 static const char VERSION_MESSAGE[] =
 PROGRAM " Version 0-1.3 \n"
 "Written by Hamid Mohamadi.\n"
@@ -232,41 +231,25 @@ std::ifstream::pos_type filesize(const char* filename)
     return in.tellg();
 }
 
-void wait_for_index() {
-    std::ifstream::pos_type maxSize = 0, refSize=0;
-    for (int i=1; i <= opt::pnum; ++i) {
-        std::ostringstream ref_stm;
-        ref_stm << "mref-" << i << ".fa";
-        refSize = filesize(ref_stm.str().c_str());
-        if( refSize > maxSize)
-            maxSize = refSize;
-    }
-    double indTime = maxSize * 1800.0 / 3000000000.0;
-    std::cerr << "est index time = " << indTime << "\n";
-    sleep((unsigned)indTime);
-}
-
 void dida_index(const int procRank, const int procSize, const char *refName) {
-	if (procRank < procSize-1 && procRank > 0) {
-		getPrt(refName, opt::pnum, procRank);
-		int pid;
-		if ((pid = fork()) < 0) {
-		   perror("fork failed");
-		   exit(2);
-	   }
-	   if (pid == 0) {
-           std::ostringstream amap_ind_stm;
-           amap_ind_stm << "mref-" << procRank << ".fa";
-           execlp("abyss-index", "abyss-index", amap_ind_stm.str().c_str(), (char *)0);
+    if (procRank < procSize-1 && procRank > 0) {
+        getPrt(refName, opt::pnum, procRank);
 
-           /*std::ostringstream bow_ind_stm, bow_tind_stm;
-           bow_ind_stm << "mref-" << procRank << ".fa";
-           bow_tind_stm << "mref-" << procRank;
-           execlp("bowtie2-build", "bowtie2-build", bow_ind_stm.str().c_str(), bow_tind_stm.str().c_str(), (char *)0);*/
-	   }
-        else
-            wait_for_index();
-	}
+        std::ostringstream oss;
+        oss << "abyss-index " << "mref-" << procRank << ".fa";
+        assert(oss.good());
+        std::string cmd = oss.str();
+        std::cerr << "Rank " << procRank << ": "
+            << "calling system(\"" << cmd << "\")"
+            << std::endl;
+        int result = system(cmd.c_str());
+        if (result != 0) {
+            std::cerr << "command failed: " << cmd
+                << " (exit status: " << result << ")"
+                << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
 void dida_dispatch(const int procRank, const int procSize, const char *libName, const char *refName) {
