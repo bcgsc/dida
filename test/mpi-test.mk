@@ -79,5 +79,5 @@ identity_test: $(abyss_map_sam) $(dida_sam)
 
 simple_identity_test: $(abyss_map_sam) $(dida_sam)
 	comm --nocheck-order -3 \
-		<(egrep -v '^@' $(abyss_map_sam)) \
-		<(egrep -v '^@' $(dida_sam))
+		<(egrep -v '^@' $(abyss_map_sam) |awk '$$5 != 0') \
+		<(egrep -v '^@' $(dida_sam) |awk '$$5 != 0')
