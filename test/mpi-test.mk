@@ -17,7 +17,7 @@ dida_sam=aln.sam
 abyss_map_sam=abyss_map.sam
 
 #------------------------------------------------------------
-# DIDA params
+# params
 #------------------------------------------------------------
 
 # number of MPI tasks
@@ -26,15 +26,9 @@ np:=4
 p:=2
 # number of threads per task
 j:=1
-# kmer size for bloom filters
-b:=80
-
-#------------------------------------------------------------
-# abyss-map
-#------------------------------------------------------------
-
 # min align length
-l:=$b
+l:=60
+
 #------------------------------------------------------------
 # special targets
 #------------------------------------------------------------
@@ -65,7 +59,7 @@ $(reads).in: $(reads)
 #------------------------------------------------------------
 
 $(dida_sam):  $(reads).in $(ref)
-	mpirun -np $(np) dida-mpi --se -p$p -j$j -b$b $(reads).in $(ref)
+	mpirun -np $(np) dida-mpi --se -p$p -j$j -l$l $(reads).in $(ref)
 
 $(abyss_map_sam): $(reads) $(ref)
 	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)
