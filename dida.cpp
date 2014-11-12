@@ -657,10 +657,6 @@ int main(int argc, char** argv) {
 	if (opt::bmer_step <= 0)
 		opt::bmer_step = opt::bmer;
 
-	std::cerr << "bmer=" << opt::bmer
-			<< " alen=" << opt::alen
-			<< " bmer_step=" << opt::bmer_step << std::endl;
-
 	const char *libName(argv[argc-2]);
 	const char *refName(argv[argc-1]);
 
@@ -680,6 +676,10 @@ int main(int argc, char** argv) {
 			std::cerr << PROGRAM ": must specify at least 3 processes with mpirun\n";
 			exit(EXIT_FAILURE);
 		}
+
+		std::cerr << "bmer=" << opt::bmer
+			<< " alen=" << opt::alen
+			<< " bmer_step=" << opt::bmer_step << std::endl;
 	}
 
 	if (opt::pnum < 1)
