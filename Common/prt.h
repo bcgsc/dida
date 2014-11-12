@@ -30,6 +30,8 @@ void partAloc(std::vector<int> &, std::vector<long> &, std::vector<int> &, std::
 
 std::vector<int> compDist(std::vector< std::vector<int> > &, std::vector<int> &, const long, const int);
 
+std::string getPrtFilename(const char *refName, const int procRank);
+
 void distPar(const char *, const int, std::vector<int> &, const int);
 
 void ddistPar(const char *, const int, std::vector<int> &);

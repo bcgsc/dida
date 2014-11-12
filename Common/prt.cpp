@@ -1,4 +1,5 @@
 #include "prt.h"
+#include <cassert>
 
 void qSort(std::vector<long> &a, std::vector<int> &d, int l, int r) {
 	long i = l-1, j = r, v = a[d[r]];
@@ -226,6 +227,27 @@ std::vector<int> compDist(std::vector< std::vector<int> > &conComp, std::vector<
     return disVec;
 }
 
+
+/**
+ * Return a filename for nth part of the target
+ * sequence file.
+ */
+std::string getPrtFilename(const char *refName, const int procRank)
+{
+	std::string ref(refName);
+	size_t lastDotIndex = ref.find_last_of(".");
+	std::ostringstream oss;
+	if (lastDotIndex == std::string::npos) {
+		oss << ref << "-" << procRank << ".fa";
+	} else {
+		oss << ref.substr(0, lastDotIndex)
+			<< "-" << procRank
+			<< ref.substr(lastDotIndex, std::string::npos);
+	}
+	assert(oss.good());
+	return oss.str();
+}
+
 void distPar(const char *uName, const int, std::vector<int> &disArr, const int procRank) {
 
 	std::string aPath, uPath, bName, eName;
@@ -235,9 +257,7 @@ void distPar(const char *uName, const int, std::vector<int> &disArr, const int p
 	std::ofstream puFile;
 
 	std::stringstream astm;
-	std::stringstream ustm;
-	ustm << "mref-" << procRank << ".fa";
-	uPath = ustm.str();
+	uPath = getPrtFilename(uName, procRank);
 	puFile.open(uPath.c_str());
 
 
@@ -379,9 +399,8 @@ void distTarget(const char *uName, const int pNum, const int procRank) {
 	uFile.seekg(0,uFile.beg);
 	std::ofstream puFile;
 
-    std::stringstream ustm;
-    ustm << "mref-" << procRank << ".fa";
-    puFile.open(ustm.str().c_str());
+	std::string uPath = getPrtFilename(uName, procRank);
+	puFile.open(uPath.c_str());
     
 	int tIndex=0;
 	getline(uFile, line);

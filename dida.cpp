@@ -239,10 +239,11 @@ void dida_partition(const int procRank, const char *refName) {
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-void dida_index(const int procRank, const int procSize) {
+void dida_index(const int procRank, const int procSize, const char *refName) {
     if (procRank < procSize-1 && procRank > 0) {
+        std::string refPartName = getPrtFilename(refName, procRank);
         std::ostringstream oss;
-        oss << "abyss-index " << "mref-" << procRank << ".fa";
+        oss << "abyss-index " << refPartName;
         assert(oss.good());
         std::string cmd = oss.str();
         std::cerr << "Rank " << procRank << ": "
@@ -258,7 +259,7 @@ void dida_index(const int procRank, const int procSize) {
     }
 }
 
-void dida_dispatch(const int procRank, const int procSize, const char *libName) {
+void dida_dispatch(const int procRank, const int procSize, const char *libName, const char *refName) {
    	if (procRank==0) {
    		int readLen=0, recLen=0;
         std::cerr << "Number of hash functions=" << opt::nhash << "\n";
@@ -276,8 +277,9 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName) 
         std::cerr << "Loading filters ...\n";
 #pragma omp parallel for shared(myFilters) private(pIndex) schedule(static,chunk)
         for (pIndex=0; pIndex<opt::pnum; ++pIndex){
+            std::string refPartName = getPrtFilename(refName, pIndex+1);
             std::stringstream sstm;
-            sstm << opt::rdir << "mref-" << pIndex+1 << ".fa";
+            sstm << opt::rdir << refPartName;
             size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
             myFilters[pIndex].resize(filterSize);
             //myFilters[pIndex].resize(filterSize, 1);
@@ -421,7 +423,7 @@ void pipe_to_stdin(int fd[])
 	close(fd[READ]);
 }
 
-void dida_align(const int procRank, const int procSize) {
+void dida_align(const int procRank, const int procSize, const char *refName) {
     if (procRank < procSize-1 && procRank > 0) {
     	MPI_Status status;
         int  recLen=0;
@@ -499,12 +501,12 @@ void dida_align(const int procRank, const int procSize) {
             else
                 std::cerr<<"file in not empty\n";*/
 
-            std::ostringstream amap_j_stm, amap_ref_stm, amap_l_stm;
+            std::string refPartName = getPrtFilename(refName, procRank);
+            std::ostringstream amap_j_stm, amap_l_stm;
             amap_j_stm << "-j" << omp_get_max_threads()-2;
-            amap_ref_stm << "mref-" << procRank << ".fa";
             amap_l_stm << "-l" << opt::alen;
 
-            execlp("abyss-map", "abyss-map", "--order", amap_j_stm.str().c_str(), amap_l_stm.str().c_str(), "-", amap_ref_stm.str().c_str(), (char *)0);
+            execlp("abyss-map", "abyss-map", "--order", amap_j_stm.str().c_str(), amap_l_stm.str().c_str(), "-", refPartName.c_str(), (char *)0);
 
             /*std::ostringstream bow_x_stm, bow_p_stm;
             bow_x_stm << "-xmref-" << procRank;
@@ -676,9 +678,9 @@ int main(int argc, char** argv) {
 	printf("process %d out of %d on %s with thread level %d\n", procRank, procSize, processor_name, provided);
 
 	dida_partition(procRank, refName);
-	dida_index(procRank, procSize);
-	dida_dispatch(procRank, procSize, libName);
-	dida_align(procRank, procSize);
+	dida_index(procRank, procSize, refName);
+	dida_dispatch(procRank, procSize, libName, refName);
+	dida_align(procRank, procSize, refName);
 	dida_merge(procRank, procSize);
 
     MPI_Finalize();
