@@ -38,7 +38,7 @@ l:=60
 default: identity_test
 
 clean:
-	rm -f $(dida_sam) $(abyss_map_sam) *mref* *.lines
+	rm -f $(dida_sam) $(abyss_map_sam) ref-* *.lines
 
 #------------------------------------------------------------
 # downloading/building test input data 
@@ -59,7 +59,7 @@ $(reads).in: $(reads)
 #------------------------------------------------------------
 
 $(dida_sam):  $(reads).in $(ref)
-	mpirun -np $(np) dida-mpi --se -p$p -j$j -l$l $(reads).in $(ref)
+	mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads).in $(ref)
 
 $(abyss_map_sam): $(reads) $(ref)
 	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)
