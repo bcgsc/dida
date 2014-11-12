@@ -38,7 +38,7 @@ static const char USAGE_MESSAGE[] =
 "\n"
 " Options:\n"
 "\n"
-"  -p, --partition=N       divide reference to N partitions\n"
+"  -p, --partition=N       divide reference to N partitions [nproc-2]\n"
 "  -j, --threads=N         use N parallel threads [partitions]\n"
 "  -l, --alen=N            the minimum alignment length [20]\n"
 "  -b, --bmer=N            size of a bmer [alen/2]\n"
@@ -57,7 +57,7 @@ namespace opt {
 	static unsigned threads = 0;
 
 	/** The number of partitions. */
-	static int pnum = 1;
+	static int pnum = -1;
 
 	/** The number of hash functions. */
 	int nhash = 5;
@@ -660,6 +660,7 @@ int main(int argc, char** argv) {
 
 	if (opt::bmer_step <= 0)
 		opt::bmer_step = opt::bmer;
+
 	std::cerr << "bmer=" << opt::bmer
 			<< " alen=" << opt::alen
 			<< " bmer_step=" << opt::bmer_step << std::endl;
@@ -671,13 +672,23 @@ int main(int argc, char** argv) {
 	char processor_name[MPI_MAX_PROCESSOR_NAME];
 
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
-	if (provided < MPI_THREAD_SERIALIZED) {
-		std::cerr << PROGRAM ": MPI_THREAD_SERIALIZED support required.\n"
-				<< "Install an MPI library which supports this level of thread safety.";
-		exit(EXIT_FAILURE);
-	}
 	MPI_Comm_size(MPI_COMM_WORLD, &procSize);
 	MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
+	if (procRank == 0) {
+		if (provided < MPI_THREAD_SERIALIZED) {
+			std::cerr << PROGRAM ": MPI_THREAD_SERIALIZED support required.\n"
+				<< "Install an MPI library which supports this level of thread safety.";
+			exit(EXIT_FAILURE);
+		}
+		if (procSize < 3) {
+			std::cerr << PROGRAM ": must specify at least 3 processes with mpirun\n";
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (opt::pnum < 1)
+		opt::pnum = procSize - 2;
+
 	MPI_Get_processor_name(processor_name,&prcrNlen);
 
 	printf("process %d out of %d on %s with thread level %d\n", procRank, procSize, processor_name, provided);
