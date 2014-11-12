@@ -38,7 +38,6 @@ static const char USAGE_MESSAGE[] =
 "\n"
 " Options:\n"
 "\n"
-"  -p, --partition=N       divide reference to N partitions [nproc-2]\n"
 "  -j, --threads=N         use N parallel threads [partitions]\n"
 "  -l, --alen=N            the minimum alignment length [20]\n"
 "  -b, --bmer=N            size of a bmer [alen/2]\n"
@@ -81,13 +80,12 @@ namespace opt {
 	static int fq;
 }
 
-static const char shortopts[] = "p:s:l:b:j:d:h:";
+static const char shortopts[] = "s:l:b:j:d:h:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "threads",	required_argument, NULL, 'j' },
-	{ "partition",	required_argument, NULL, 'p' },
 	{ "bmer",	required_argument, NULL, 'b' },
 	{ "alen",	required_argument, NULL, 'l' },
 	{ "step",	required_argument, NULL, 's' },
@@ -619,8 +617,6 @@ int main(int argc, char** argv) {
 				arg >> opt::alen; break;
 			case 's':
 				arg >> opt::bmer_step; break;
-			case 'p':
-				arg >> opt::pnum; break;
 			case 'd':
 				arg >> opt::rdir; break;
 			case 'h':
