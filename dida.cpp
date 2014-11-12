@@ -640,8 +640,8 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	if (opt::alen <= 0) {
-		std::cerr << PROGRAM ": alignment length must at least 1.\n";
+	if (opt::alen <= 1) {
+		std::cerr << PROGRAM ": alignment length must at least 2.\n";
 		die = true;
 	}
 
