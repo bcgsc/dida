@@ -231,10 +231,16 @@ std::ifstream::pos_type filesize(const char* filename)
     return in.tellg();
 }
 
-void dida_index(const int procRank, const int procSize, const char *refName) {
-    if (procRank < procSize-1 && procRank > 0) {
-        getPrt(refName, opt::pnum, procRank);
+void dida_partition(const int procRank, const char *refName) {
+    if (procRank == 0) {
+        for (int i = 1; i <= opt::pnum; ++i)
+            getPrt(refName, opt::pnum, i);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+}
 
+void dida_index(const int procRank, const int procSize) {
+    if (procRank < procSize-1 && procRank > 0) {
         std::ostringstream oss;
         oss << "abyss-index " << "mref-" << procRank << ".fa";
         assert(oss.good());
@@ -252,9 +258,8 @@ void dida_index(const int procRank, const int procSize, const char *refName) {
     }
 }
 
-void dida_dispatch(const int procRank, const int procSize, const char *libName, const char *refName) {
+void dida_dispatch(const int procRank, const int procSize, const char *libName) {
    	if (procRank==0) {
-        dgetPrt(refName, opt::pnum, procRank);
    		int readLen=0, recLen=0;
         std::cerr << "Number of hash functions=" << opt::nhash << "\n";
 
@@ -272,7 +277,7 @@ void dida_dispatch(const int procRank, const int procSize, const char *libName, 
 #pragma omp parallel for shared(myFilters) private(pIndex) schedule(static,chunk)
         for (pIndex=0; pIndex<opt::pnum; ++pIndex){
             std::stringstream sstm;
-            sstm << opt::rdir << "dmref-" << pIndex+1 << ".fa";
+            sstm << opt::rdir << "mref-" << pIndex+1 << ".fa";
             size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
             myFilters[pIndex].resize(filterSize);
             //myFilters[pIndex].resize(filterSize, 1);
@@ -670,8 +675,9 @@ int main(int argc, char** argv) {
 
 	printf("process %d out of %d on %s with thread level %d\n", procRank, procSize, processor_name, provided);
 
-	dida_index(procRank, procSize, refName);
-	dida_dispatch(procRank, procSize, libName, refName);
+	dida_partition(procRank, refName);
+	dida_index(procRank, procSize);
+	dida_dispatch(procRank, procSize, libName);
 	dida_align(procRank, procSize);
 	dida_merge(procRank, procSize);
 
