@@ -671,6 +671,11 @@ int main(int argc, char** argv) {
 	char processor_name[MPI_MAX_PROCESSOR_NAME];
 
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+	if (provided < MPI_THREAD_SERIALIZED) {
+		std::cerr << PROGRAM ": MPI_THREAD_SERIALIZED support required.\n"
+				<< "Install an MPI library which supports this level of thread safety.";
+		exit(EXIT_FAILURE);
+	}
 	MPI_Comm_size(MPI_COMM_WORLD, &procSize);
 	MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
 	MPI_Get_processor_name(processor_name,&prcrNlen);
