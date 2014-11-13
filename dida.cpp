@@ -98,6 +98,41 @@ static const struct option longopts[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
+static const char b2p[256] = {
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //0
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //1
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //2
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //3
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'T', 'N', 'G', 'N', 'N', 'N', 'C', //4   'A' 'C' 'G'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'A', 'N', 'N', 'N', //5   'T'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'T', 'N', 'G', 'N', 'N', 'N', 'C', //6   'a' 'c' 'g'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'A', 'N', 'N', 'N', //7   't'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //8
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //9
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //10
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //11
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //12
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //13
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //14
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //15
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N'
+};
+
 size_t getInfo(const char *aName, unsigned k){
 	std::string line;
 	std::ifstream faFile(aName);
@@ -257,151 +292,170 @@ void dida_index(const int procRank, const int procSize, const char *refName) {
     }
 }
 
-void dida_dispatch(const int procRank, const int procSize, const char *libName, const char *refName) {
-   	if (procRank==0) {
-   		int readLen=0, recLen=0;
-        std::cerr << "Number of hash functions=" << opt::nhash << "\n";
-
-        unsigned tNum = omp_get_max_threads()>opt::pnum?opt::pnum:omp_get_max_threads();
-        if (opt::threads < tNum && opt::threads > 0)
-            tNum = opt::threads;
-        std::cerr << "Number of threads=" << tNum << std::endl;
-        omp_set_num_threads(tNum);
-
-        int pIndex,chunk=1;
-        //begin create filters
-        std::vector< std::vector<bool> > myFilters(opt::pnum);
-
-        std::cerr << "Loading filters ...\n";
+std::vector< std::vector<bool> > loadFilter(const char *refName) {
+    int pIndex,chunk=1;
+    //begin create filters
+    std::vector< std::vector<bool> > myFilters(opt::pnum);
+    
+    std::cerr << "Loading filters ...\n";
 #pragma omp parallel for shared(myFilters) private(pIndex) schedule(static,chunk)
-        for (pIndex=0; pIndex<opt::pnum; ++pIndex){
-            std::string refPartName = getPrtFilename(refName, pIndex+1);
-            std::stringstream sstm;
-            sstm << opt::rdir << refPartName;
-            size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
-            myFilters[pIndex].resize(filterSize);
-            //myFilters[pIndex].resize(filterSize, 1);
+    for (pIndex=0; pIndex<opt::pnum; ++pIndex){
+        std::string refPartName = getPrtFilename(refName, pIndex+1);
+        std::stringstream sstm;
+        sstm << opt::rdir << refPartName;
+        size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
+        myFilters[pIndex].resize(filterSize);
+        //myFilters[pIndex].resize(filterSize, 1);
+        
+        std::ifstream uFile(sstm.str().c_str());
+        std::string line;
+        while (getline(uFile, line)){
+            getline(uFile, line);
+            std::transform(line.begin(), line.end(), line.begin(), ::toupper);
+            long uL= line.length();
+            for(long j = 0; j < uL -opt::bmer+1; ++j) {
+                std::string bMer = line.substr(j,opt::bmer);
+                //Begin
+                int p=0,hLen=(opt::bmer-1)/2;
+                while (bMer[p] == b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
+                    ++p;
+                    if(p>hLen)break;
+                }
+                if (bMer[p] > b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
+                    for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<rIndex; ++lIndex,--rIndex) {
+                        char tmp = b2p[(unsigned char)bMer[rIndex]];
+                        bMer[rIndex] = b2p[(unsigned char)bMer[lIndex]];
+                        bMer[lIndex] = tmp;
+                    }
+                }
+                //End
+                filInsert(myFilters, pIndex, bMer);
+            }
+        }
+        uFile.close();
+    }
+    std::cerr<< "Loading BF done!\n";
+    return myFilters;
+}
 
-            std::ifstream uFile(sstm.str().c_str());
-            std::string line;
-            while (getline(uFile, line)){
-                getline(uFile, line);
-                std::transform(line.begin(), line.end(), line.begin(), ::toupper);
-                long uL= line.length();
-                for(long j = 0; j < uL -opt::bmer+1; ++j) {
-                    std::string bMer = line.substr(j,opt::bmer);
-                    //Begin
-                    int p=0,hLen=(opt::bmer-1)/2;
-                    while(bMer[p] == rc(bMer[opt::bmer-1-p])){
-                        ++p;
-                        if(p>hLen)break;
-                    }
-                    if (bMer[p] > rc(bMer[opt::bmer-1-p])) {
-                        for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<rIndex; ++lIndex,--rIndex) {
-                            char tmp = rc(bMer[rIndex]);
-                            bMer[rIndex] = rc(bMer[lIndex]);
-                            bMer[lIndex] = tmp;
+void dispatchRead(const int procSize, const char *libName, const std::vector< std::vector<bool> > &myFilters) {
+    int pIndex,chunk=1;
+    int readLen=0, recLen=0;
+    std::cerr << "Number of hash functions=" << opt::nhash << "\n";
+    
+    unsigned tNum = omp_get_max_threads()>opt::pnum?opt::pnum:omp_get_max_threads();
+    if (opt::threads < tNum && opt::threads > 0)
+        tNum = opt::threads;
+    std::cerr << "Number of threads=" << tNum << std::endl;
+    omp_set_num_threads(tNum);
+    
+    
+    if (!opt::se)
+        std::cerr << "Dispatching paired-end library:\n";
+    else
+        std::cerr << "Dispatching single-end library:\n";
+    
+    std::string readHead, readSeq, readDir, readQual, rName;
+    unsigned readId=0, notDsp=0;
+    std::ifstream libFile(libName);
+    while (getline(libFile, rName)) {
+        std::ifstream readFile[2];
+        readFile[0].open(rName.c_str());
+        if (!opt::se) {
+            getline(libFile, rName);
+            readFile[1].open(rName.c_str());
+        }
+        int fileNo=0;
+        while (getline(readFile[fileNo], readHead)) {
+            getline(readFile[fileNo], readSeq);
+            std::transform(readSeq.begin(), readSeq.end(), readSeq.begin(), ::toupper);
+            getline(readFile[fileNo], readDir);
+            getline(readFile[fileNo], readQual);
+            readLen = readSeq.length();
+            readHead[0]=':';
+            bool dspRead = false;
+#pragma omp parallel for shared(myFilters, dspRead) private(pIndex) schedule(static,chunk)
+            for(pIndex=1; pIndex<=opt::pnum; ++pIndex) {
+                int j=0;
+                while (j < readLen) {
+                    if (j > readLen-opt::bmer)
+                        j=readLen-opt::bmer;
+                    std::string bMer = readSeq.substr(j,opt::bmer);
+                    //Begin preprocess k-mer
+					int p=0,hLen=(opt::bmer-1)/2;
+					while (bMer[p] == b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
+						++p;
+						if(p>hLen)break;
+					}
+					if (bMer[p] > b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
+						for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<rIndex; ++lIndex,--rIndex) {
+							char tmp = b2p[(unsigned char)bMer[rIndex]];
+							bMer[rIndex] = b2p[(unsigned char)bMer[lIndex]];
+							bMer[lIndex] = tmp;
+						}
+					}
+					//END                    
+                    if (filContain(myFilters, pIndex-1, bMer)) {
+#pragma omp critical
+                        {
+                            dspRead = true;
+                            std::stringstream hstm;
+                            // Do we need to upper-case read to dispatch?
+                            if (!opt::fq)
+                                hstm << ">" << readId << readHead << "\n" << readSeq;
+                            else
+                                hstm << "@" << readId << readHead << "\n" << readSeq << "\n+\n" << readQual;
+                            std::string readRec = hstm.str();
+                            recLen = readRec.length();
+
+                            MPI_Send(&recLen, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
+                            MPI_Send(&readRec[0], recLen+1, MPI_CHAR, pIndex, 0, MPI_COMM_WORLD);
+                            MPI_Send(&pIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
                         }
+                        break;
                     }
-                    //End
-                    filInsert(myFilters, pIndex, bMer);
+                    j+=opt::bmer_step;
                 }
             }
-            uFile.close();
-        }
-        std::cerr<< "Loading BF done!\n";
-
-        if (!opt::se)
-    		std::cerr << "Dispatching paired-end library:\n";
-    	else
-    		std::cerr << "Dispatching single-end library:\n";
-
-    	std::string readHead, readSeq, readDir, readQual, rName;
-        unsigned readId=0, notDsp=0;
-        std::ifstream libFile(libName);
-        while (getline(libFile, rName)) {
-        	std::ifstream readFile[2];
-        	readFile[0].open(rName.c_str());
-        	if (!opt::se) {
-				getline(libFile, rName);
-				readFile[1].open(rName.c_str());
-			}
-    		int fileNo=0;
-    		while (getline(readFile[fileNo], readHead)) {
-    			getline(readFile[fileNo], readSeq);
-                std::transform(readSeq.begin(), readSeq.end(), readSeq.begin(), ::toupper);
-                getline(readFile[fileNo], readDir);
-                getline(readFile[fileNo], readQual);
-                readLen = readSeq.length();
-                readHead[0]=':';
+            if (!dspRead)
+#pragma omp critical
+            {
                 std::stringstream hstm;
                 // Do we need to upper-case read to dispatch?
                 if (!opt::fq)
-                	hstm << ">" << readId << readHead << "\n" << readSeq;
+                    hstm << ">" << readId << readHead << "\n" << readSeq;
                 else
-                	hstm << "@" << readId << readHead << "\n" << readSeq << "\n+\n" << readQual;
+                    hstm << "@" << readId << readHead << "\n" << readSeq << "\n+\n" << readQual;
                 std::string readRec = hstm.str();
-                recLen = readRec.length();
-                bool dspRead = false;
-				#pragma omp parallel for shared(myFilters, dspRead) private(pIndex) schedule(static,chunk)
-                for(pIndex=1; pIndex<=opt::pnum; ++pIndex) {
-                	int j=0;
-                	while (j < readLen) {
-    					if (j > readLen-opt::bmer)
-    						j=readLen-opt::bmer;
-                        std::string bMer = readSeq.substr(j,opt::bmer);
-                        //Begin preprocess k-mer
-                        int p=0,hLen=(opt::bmer-1)/2;
-                        while(bMer[p] == rc(bMer[opt::bmer-1-p])){
-                            ++p;
-                            if(p>hLen)break;
-                        }
-                        if (bMer[p] > rc(bMer[opt::bmer-1-p])) {
-                            for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<rIndex; ++lIndex,--rIndex) {
-                                char tmp = rc(bMer[rIndex]);
-                                bMer[rIndex] = rc(bMer[lIndex]);
-                                bMer[lIndex] = tmp;
-                            }
-                        }
-                        //END preprocess k-mer
-                        if (filContain(myFilters, pIndex-1, bMer)) {
-                            #pragma omp critical
-                            {
-                                dspRead = true;
-                                MPI_Send(&recLen, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
-                                MPI_Send(&readRec[0], recLen+1, MPI_CHAR, pIndex, 0, MPI_COMM_WORLD);
-                                MPI_Send(&pIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
-                            }
-                            break;
-                        }
-                        j+=opt::bmer_step;
-                    }
-                }
-                if (!dspRead)
-                #pragma omp critical
-                {
-                	++notDsp;
-                	int rndIndex = notDsp%opt::pnum + 1;
-                	MPI_Send(&recLen, 1, MPI_INT, rndIndex, 0, MPI_COMM_WORLD);
-					MPI_Send(&readRec[0], recLen+1, MPI_CHAR, rndIndex, 0, MPI_COMM_WORLD);
-					MPI_Send(&rndIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
-                }
-                ++readId;
-    			if (!opt::se)
-    				fileNo = (fileNo + 1)  % 2;
+                
+                ++notDsp;
+                int rndIndex = notDsp%opt::pnum + 1;
+                MPI_Send(&recLen, 1, MPI_INT, rndIndex, 0, MPI_COMM_WORLD);
+                MPI_Send(&readRec[0], recLen+1, MPI_CHAR, rndIndex, 0, MPI_COMM_WORLD);
+                MPI_Send(&rndIndex, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
             }
-            readFile[0].close();
+            ++readId;
             if (!opt::se)
-            	readFile[1].close();
+                fileNo = (fileNo + 1)  % 2;
         }
-        libFile.close();
-        int minImpi = -1;
-        #pragma omp critical
-        {
-            for(int pIndex = 1; pIndex<=opt::pnum; ++pIndex)
-                MPI_Send(&minImpi, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
-            MPI_Send(&minImpi, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
-        }
+        readFile[0].close();
+        if (!opt::se)
+            readFile[1].close();
+    }
+    libFile.close();
+    int minImpi = -1;
+#pragma omp critical
+    {
+        for(int pIndex = 1; pIndex<=opt::pnum; ++pIndex)
+            MPI_Send(&minImpi, 1, MPI_INT, pIndex, 0, MPI_COMM_WORLD);
+        MPI_Send(&minImpi, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
+    }
+}
+
+void dida_dispatch(const int procRank, const int procSize, const char *libName, const char *refName) {
+   	if (procRank==0) {
+        std::vector< std::vector<bool> > myFilters = loadFilter(refName);
+        dispatchRead(procSize,libName, myFilters);
     }
 }
 
