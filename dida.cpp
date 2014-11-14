@@ -203,26 +203,6 @@ bool filContain(const std::vector< std::vector<bool> > &myFilters, const unsigne
 	return true;
 }
 
-static inline char rc(char c) {
-    switch (c) {
-        case 'A':
-            return 'T';
-            break;
-        case 'C':
-            return 'G';
-            break;
-        case 'G':
-            return 'C';
-            break;
-        case 'T':
-            return 'A';
-            break;
-        default:
-            break;
-    }
-    return c;
-}
-
 struct samRec {
     unsigned SamOrd;
     std::string SamQn;
@@ -305,7 +285,6 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
         sstm << opt::rdir << refPartName;
         size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
         myFilters[pIndex].resize(filterSize);
-        //myFilters[pIndex].resize(filterSize, 1);
         
         std::ifstream uFile(sstm.str().c_str());
         std::string line;
@@ -400,7 +379,6 @@ void dispatchRead(const int procSize, const char *libName, const std::vector< st
                         {
                             dspRead = true;
                             std::stringstream hstm;
-                            // Do we need to upper-case read to dispatch?
                             if (!opt::fq)
                                 hstm << ">" << readId << readHead << "\n" << readSeq;
                             else
@@ -421,12 +399,12 @@ void dispatchRead(const int procSize, const char *libName, const std::vector< st
 #pragma omp critical
             {
                 std::stringstream hstm;
-                // Do we need to upper-case read to dispatch?
                 if (!opt::fq)
                     hstm << ">" << readId << readHead << "\n" << readSeq;
                 else
                     hstm << "@" << readId << readHead << "\n" << readSeq << "\n+\n" << readQual;
                 std::string readRec = hstm.str();
+                recLen = readRec.length();
                 
                 ++notDsp;
                 int rndIndex = notDsp%opt::pnum + 1;
@@ -635,24 +613,6 @@ void dida_merge(const int procRank, const int procSize) {
 		comFile.close();
 		std::cout << "dida finished successfully!\n";
 	}
-    // Merge process for Bowtie
-    /*if (procRank==procSize-1) {
-		MPI_Status status;
-        std::ofstream comFile("aln.sam", std::ios_base::app);
-        int isize=0, alnId=0;
-        for(;;) {
-            MPI_Recv(&alnId, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
-			if(alnId==-1) break;
-			MPI_Recv(&isize, 1, MPI_INT, alnId, 0, MPI_COMM_WORLD, &status);
-			char *readbuf = new char [isize+1];
-			MPI_Recv(readbuf, isize+1, MPI_CHAR, alnId, 0, MPI_COMM_WORLD, &status);
-			std::string sambuf(readbuf, readbuf+isize);
-			delete [] readbuf;
-            comFile<<sambuf;
-        }
-        comFile.close();
-        std::cout << "dida finished successfully!\n";
-    }*/
 }
 
 int main(int argc, char** argv) {
