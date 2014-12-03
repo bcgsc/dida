@@ -489,7 +489,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
 					   delete [] readbuf;
 					   fprintf(stdout, "%s\n",myRead.c_str());
 				   }
-                    close(STDOUT_FILENO);
+					fclose(stdout);
                 }
 
                 // send SAM alignments to merge process
