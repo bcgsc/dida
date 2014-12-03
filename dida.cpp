@@ -502,6 +502,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
                         if (line[0]!='@')
                         #pragma omp critical
                         {
+							assert(lineLen > 0);
                             MPI_Send(&lineLen, 1, MPI_INT, procSize-1, 0, MPI_COMM_WORLD);
                     		MPI_Send(line, lineLen+1, MPI_CHAR, procSize-1, 0, MPI_COMM_WORLD);
                         }
@@ -584,7 +585,6 @@ samRec getSam(std::vector <samRec> &recBuffer){
 void dida_merge(const int procRank, const int procSize) {
 	if (procRank==procSize-1) {
 		MPI_Status status;
-		std::ofstream comFile("aln.sam", std::ios_base::app);
 		int isize=0, alnId=0;
 		std::vector< samRec > recBuffer;
 		unsigned samCounter=0;
@@ -592,6 +592,7 @@ void dida_merge(const int procRank, const int procSize) {
 			MPI_Recv(&alnId, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
 			if(alnId==-1) break;
 			MPI_Recv(&isize, 1, MPI_INT, alnId, 0, MPI_COMM_WORLD, &status);
+			assert(isize > 0);
 			char *readbuf = new char [isize+1];
 			MPI_Recv(readbuf, isize+1, MPI_CHAR, alnId, 0, MPI_COMM_WORLD, &status);
 			std::string sambuf(readbuf, readbuf+isize);
@@ -601,17 +602,16 @@ void dida_merge(const int procRank, const int procSize) {
 				recBuffer.push_back(cRec);
 			}
 			else {
-				comFile << getSam(recBuffer) << "\n";
+				std::cout << getSam(recBuffer) << std::endl;
 				++samCounter;
 				recBuffer.clear();
 				recBuffer.push_back(cRec);
 			}
 		}
 		samRec lastRec = getSam(recBuffer);
-		comFile << lastRec << "\n";
+		std::cout << lastRec << std::endl;
 
-		comFile.close();
-		std::cout << "dida finished successfully!\n";
+		std::cerr << "dida finished successfully!\n";
 	}
 }
 
@@ -701,7 +701,7 @@ int main(int argc, char** argv) {
 
 	MPI_Get_processor_name(processor_name,&prcrNlen);
 
-	printf("process %d out of %d on %s with thread level %d\n", procRank, procSize, processor_name, provided);
+	fprintf(stderr, "process %d out of %d on %s with thread level %d\n", procRank, procSize, processor_name, provided);
 
 	dida_partition(procRank, refName);
 	dida_index(procRank, procSize, refName);

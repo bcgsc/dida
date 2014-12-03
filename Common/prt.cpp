@@ -364,7 +364,7 @@ void distTarget(const char *uName, const int pNum, const int procRank) {
 	totLen += uLen;
 	lenArr.push_back(uLen);
     
-	std::cout << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
+	std::cerr << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
     
 	int tLen = lenArr.size();
 	std::vector<int> indArr(tLen);
@@ -443,7 +443,7 @@ void ddistTarget(const char *uName, const int pNum) {
 	totLen += uLen;
 	lenArr.push_back(uLen);
 
-	std::cout << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
+	std::cerr << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
 
 	int tLen = lenArr.size();
 	std::vector<int> indArr(tLen);
@@ -541,7 +541,7 @@ int dgetPrt(const char *uName, const int pNum, const int procRank) {
     clock_t sTime = clock();
 
 	if (adjExist(uName)) {
-		std::cout << "Dynamic target partitioning.\n";
+		std::cerr << "Dynamic target partitioning.\n";
 		std::vector<int> lenArr;
 		long totLen;
 		std::vector< std::vector<int> > adjList = getAdj(uName, lenArr, totLen, procRank);
@@ -550,10 +550,10 @@ int dgetPrt(const char *uName, const int pNum, const int procRank) {
 		ddistPar(uName, pNum, disVec);
 	}
 	else {
-		std::cout << "Static target partitioning.\n";
+		std::cerr << "Static target partitioning.\n";
 		ddistTarget(uName, pNum);
 	}
 
-	std::cout << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
+	std::cerr << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
 	return 0;
 }
