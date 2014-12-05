@@ -1,5 +1,6 @@
 #include "config.h"
 #include "Uncompress.h"
+#include "FileUtil.h"
 #include "prt.h"
 
 #include <mpi.h>
@@ -245,9 +246,31 @@ std::ifstream::pos_type filesize(const char* filename)
 }
 
 void dida_partition(const int procRank, const char *refName) {
+
     if (procRank == 0) {
-        for (int i = 1; i <= opt::pnum; ++i)
-            getPrt(refName, opt::pnum, i);
+
+        bool allPrtFilesExist = true;
+        for (int i = 1; i <= opt::pnum; ++i) {
+            if (!fileExists(getPrtFilename(refName, i))) {
+                allPrtFilesExist = false;
+                break;
+            }
+        }
+
+        if (allPrtFilesExist) {
+            std::cerr << "rank " << procRank << ": "
+                "skipping partition stage, all partition files already exist: ";
+            for (int i = 1; i <= opt::pnum; ++i) {
+                if (i != 1)
+                    std::cerr << ", ";
+                std::cerr << "'" << getPrtFilename(refName, i) << "'";
+            }
+            std::cerr << std::endl;
+        } else {
+            for (int i = 1; i <= opt::pnum; ++i)
+                getPrt(refName, opt::pnum, i);
+        }
+
     }
     MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -255,19 +278,27 @@ void dida_partition(const int procRank, const char *refName) {
 void dida_index(const int procRank, const int procSize, const char *refName) {
     if (procRank < procSize-1 && procRank > 0) {
         std::string refPartName = getPrtFilename(refName, procRank);
-        std::ostringstream oss;
-        oss << "abyss-index " << refPartName;
-        assert(oss.good());
-        std::string cmd = oss.str();
-        std::cerr << "Rank " << procRank << ": "
-            << "calling system(\"" << cmd << "\")"
-            << std::endl;
-        int result = system(cmd.c_str());
-        if (result != 0) {
-            std::cerr << "command failed: " << cmd
-                << " (exit status: " << result << ")"
+        std::string indexName = refPartName + ".fm";
+        if (fileExists(indexName)) {
+            std::cerr << "rank " << procRank << ": "
+                "skipping index stage, index file '"
+                << indexName << "' already exists"
                 << std::endl;
-            exit(EXIT_FAILURE);
+        } else {
+            std::ostringstream oss;
+            oss << "abyss-index " << refPartName;
+            assert(oss.good());
+            std::string cmd = oss.str();
+            std::cerr << "Rank " << procRank << ": "
+                << "calling system(\"" << cmd << "\")"
+                << std::endl;
+            int result = system(cmd.c_str());
+            if (result != 0) {
+                std::cerr << "command failed: " << cmd
+                    << " (exit status: " << result << ")"
+                    << std::endl;
+                exit(EXIT_FAILURE);
+            }
         }
     }
 }
