@@ -24,6 +24,8 @@
 
 #define PROGRAM "dida-mpi"
 
+using namespace std;
+
 const unsigned READ = 0;
 const unsigned WRITE = 1;
 
@@ -348,7 +350,7 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
     return myFilters;
 }
 
-void dispatchRead(const int procSize, const char *libName, const std::vector< std::vector<bool> > &myFilters) {
+void dispatchRead(const int procSize, const vector<string>& inFiles, const std::vector< std::vector<bool> > &myFilters) {
     int pIndex,chunk=1;
     int readLen=0, recLen=0;
     std::cerr << "Number of hash functions=" << opt::nhash << "\n";
@@ -367,13 +369,12 @@ void dispatchRead(const int procSize, const char *libName, const std::vector< st
     
     std::string readHead, readSeq, readDir, readQual, rName;
     unsigned readId=0, notDsp=0;
-    std::ifstream libFile(libName);
-    while (getline(libFile, rName)) {
+    for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
         std::ifstream readFile[2];
-        readFile[0].open(rName.c_str());
+        readFile[0].open(inFiles[file_i].c_str());
         if (!opt::se) {
-            getline(libFile, rName);
-            readFile[1].open(rName.c_str());
+			++file_i;
+            readFile[1].open(inFiles[file_i].c_str());
         }
         int fileNo=0;
         while (getline(readFile[fileNo], readHead)) {
@@ -451,7 +452,6 @@ void dispatchRead(const int procSize, const char *libName, const std::vector< st
         if (!opt::se)
             readFile[1].close();
     }
-    libFile.close();
     int minImpi = -1;
 #pragma omp critical
     {
@@ -461,10 +461,10 @@ void dispatchRead(const int procSize, const char *libName, const std::vector< st
     }
 }
 
-void dida_dispatch(const int procRank, const int procSize, const char *libName, const char *refName) {
+void dida_dispatch(const int procRank, const int procSize, const vector<string>& inFiles, const char *refName) {
    	if (procRank==0) {
         std::vector< std::vector<bool> > myFilters = loadFilter(refName);
-        dispatchRead(procSize,libName, myFilters);
+        dispatchRead(procSize, inFiles, myFilters);
     }
 }
 
@@ -702,7 +702,11 @@ int main(int argc, char** argv) {
 	if (opt::bmer_step <= 0)
 		opt::bmer_step = opt::bmer;
 
-	const char *libName(argv[argc-2]);
+	vector<string> inFiles;
+	for (int i = optind; i < argc-1; ++i) {
+		string file(argv[i]);
+		inFiles.push_back(file);
+	}
 	const char *refName(argv[argc-1]);
 
 	int procSize, procRank, prcrNlen, provided;
@@ -736,7 +740,7 @@ int main(int argc, char** argv) {
 
 	dida_partition(procRank, refName);
 	dida_index(procRank, procSize, refName);
-	dida_dispatch(procRank, procSize, libName, refName);
+	dida_dispatch(procRank, procSize, inFiles, refName);
 	dida_align(procRank, procSize, refName);
 	dida_merge(procRank, procSize);
 

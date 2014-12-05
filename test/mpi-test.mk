@@ -58,8 +58,8 @@ $(reads).in: $(reads)
 # running DIDA/abyss-map
 #------------------------------------------------------------
 
-$(dida_sam):  $(reads).in $(ref)
-	mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads).in $(ref) >$(dida_sam)
+$(dida_sam):  $(reads) $(ref)
+	mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref) >$(dida_sam)
 
 $(abyss_map_sam): $(reads) $(ref)
 	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)
