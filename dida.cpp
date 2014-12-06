@@ -326,6 +326,8 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
             std::transform(line.begin(), line.end(), line.begin(), ::toupper);
             long uL= line.length();
             for(long j = 0; j < uL -opt::bmer+1; ++j) {
+				assert((int)line.size() > j);
+//				assert((int)line.size() > j + opt::bmer);
                 std::string bMer = line.substr(j,opt::bmer);
                 //Begin
                 int p=0,hLen=(opt::bmer-1)/2;
@@ -374,6 +376,7 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
         readFile[0].open(inFiles[file_i].c_str());
         if (!opt::se) {
 			++file_i;
+			assert(file_i < inFiles.size());
             readFile[1].open(inFiles[file_i].c_str());
         }
         int fileNo=0;
@@ -391,6 +394,7 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
                 while (j < readLen) {
                     if (j > readLen-opt::bmer)
                         j=readLen-opt::bmer;
+					assert((int)readSeq.size() > j);
                     std::string bMer = readSeq.substr(j,opt::bmer);
                     //Begin preprocess k-mer
 					int p=0,hLen=(opt::bmer-1)/2;
@@ -686,7 +690,7 @@ int main(int argc, char** argv) {
 		die = true;
 	}
 
-	if (argc - optind != 2) {
+	if (argc - optind < 2) {
 		std::cerr << PROGRAM ": missing arguments\n";
 		die = true;
 	}

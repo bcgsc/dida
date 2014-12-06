@@ -54,9 +54,11 @@ void getFname(const char *filename, std::string &bName, std::string &eName) {
 	}
     if (pos == 0) {
         bName = "";
+		assert(fName.size() > pos+1);
 		eName = fName.substr(pos+1, std::string::npos);
 		return;
 	}
+	assert(fName.size() > pos);
     bName = fName.substr(0, pos);
 	eName = fName.substr(pos+1, std::string::npos);
 }
@@ -240,6 +242,7 @@ std::string getPrtFilename(const char *refName, const int procRank)
 	if (lastDotIndex == std::string::npos) {
 		oss << ref << "-" << procRank << ".fa";
 	} else {
+		assert(lastDotIndex < ref.size());
 		oss << ref.substr(0, lastDotIndex)
 			<< "-" << procRank
 			<< ref.substr(lastDotIndex, std::string::npos);
