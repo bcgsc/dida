@@ -73,9 +73,6 @@ namespace opt {
 	/** The step size when breaking a read into b-mers. */
 	int bmer_step = -1;
 
-	/** dir of subtargets. */
-	std::string rdir = "./";
-
 	/** single-end library. */
 	static int se;
 
@@ -140,11 +137,18 @@ size_t getInfo(const char *aName, unsigned k){
 	std::string line;
 	std::ifstream faFile(aName);
 	size_t totItm=0;
+	size_t fasta_lines = 0;
 	while(getline(faFile, line)){
 		getline(faFile, line);
 		size_t uLen = line.length();
 		totItm+=uLen-k+1;
+		++fasta_lines;
 	}
+	if (fasta_lines == 0) {
+		cerr << PROGRAM ": error: failed to read from file `" << aName << "'." << endl;
+	}
+	assert(fasta_lines > 0);
+	assert(totItm > 0); // Require that there be at least one item in the file
 	std::cerr << "|totLen|=" << totItm << std::endl;
 	faFile.close();
 	return totItm;
@@ -314,12 +318,10 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
 #pragma omp parallel for shared(myFilters) private(pIndex) schedule(static,chunk)
     for (pIndex=0; pIndex<opt::pnum; ++pIndex){
         std::string refPartName = getPrtFilename(refName, pIndex+1);
-        std::stringstream sstm;
-        sstm << opt::rdir << refPartName;
-        size_t filterSize = opt::ibits*getInfo((sstm.str()).c_str(), opt::bmer);
+        size_t filterSize = opt::ibits*getInfo(refPartName.c_str(), opt::bmer);
         myFilters[pIndex].resize(filterSize);
         
-        std::ifstream uFile(sstm.str().c_str());
+        std::ifstream uFile(refPartName.c_str());
         std::string line;
         while (getline(uFile, line)){
             getline(uFile, line);
@@ -373,6 +375,7 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
     unsigned readId=0, notDsp=0;
     for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
         std::ifstream readFile[2];
+		assert(file_i < inFiles.size());
         readFile[0].open(inFiles[file_i].c_str());
         if (!opt::se) {
 			++file_i;
@@ -569,7 +572,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
 
             std::string refPartName = getPrtFilename(refName, procRank);
             std::ostringstream amap_j_stm, amap_l_stm;
-            amap_j_stm << "-j" << omp_get_max_threads()-2;
+            amap_j_stm << "-j" << opt::threads;
             amap_l_stm << "-l" << opt::alen;
 
             execlp("abyss-map", "abyss-map", "--order", amap_j_stm.str().c_str(), amap_l_stm.str().c_str(), "-", refPartName.c_str(), (char *)0);
@@ -666,8 +669,6 @@ int main(int argc, char** argv) {
 				arg >> opt::alen; break;
 			case 's':
 				arg >> opt::bmer_step; break;
-			case 'd':
-				arg >> opt::rdir; break;
 			case 'h':
 				arg >> opt::nhash; break;
 
