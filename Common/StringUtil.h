@@ -105,4 +105,22 @@ bool isReadNamePair(const std::string& name1, const std::string& name2)
 	return false;
 }
 
+/** Convert any type (e.g. int) to a std::string. */
+template <typename T>
+static inline std::string toString(T n)
+{
+	std::stringstream ss;
+	ss << n;
+	return ss.str();
+}
+
+/** Convert a string to any another type (e.g. int). */
+template <typename T>
+static inline void stringToVal(const std::string& s, T& result)
+{
+	std::stringstream ss(s);
+	ss >> result;
+	assert(!ss.fail() && ss.eof());
+}
+
 #endif
