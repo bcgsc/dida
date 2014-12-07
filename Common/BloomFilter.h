@@ -213,6 +213,16 @@ class BloomFilter
 		return headers;
 	}
 
+	/** Resize the bloom filter (wipes the current data) */
+	void resize(size_t size)
+	{
+		if (m_size > 0 && m_array != NULL)
+			delete[] m_array;
+
+		m_array = new char[(size + 7)/8]();
+		m_size = size;
+	}
+
   protected:
 
 	/** Write header section of Bloom filter file. */
@@ -225,16 +235,6 @@ class BloomFilter
 		}
 		out << END_HEADER_MARKER << "\n";
 		assert(out);
-	}
-
-	/** Resize the bloom filter (wipes the current data) */
-	void resize(size_t size)
-	{
-		if (m_size > 0 && m_array != NULL)
-			delete[] m_array;
-
-		m_array = new char[(size + 7)/8]();
-		m_size = size;
 	}
 
 	/** Size of Bloom filter in bits. */
