@@ -2,6 +2,7 @@
 #include "Uncompress.h"
 #include "FileUtil.h"
 #include "MurmurHash2.h"
+#include "BloomFilter.h"
 #include "prt.h"
 
 #include <mpi.h>
@@ -155,18 +156,6 @@ size_t getInfo(const char *aName, unsigned k){
 	return totItm;
 }
 
-void filInsert(std::vector< std::vector<bool> > &myFilters, const unsigned pn, const std::string &bMer) {
-	for (int i=0; i < opt::nhash; ++i)
-		myFilters[pn][MurmurHash64A(bMer.c_str(), opt::bmer, i) % myFilters[pn].size()]=true;
-}
-
-bool filContain(const std::vector< std::vector<bool> > &myFilters, const unsigned pn, const std::string &bMer) {
-	for (int i=0; i < opt::nhash; ++i)
-		if (!myFilters[pn][MurmurHash64A(bMer.c_str(), opt::bmer, i) % myFilters[pn].size()])
-			return false;
-	return true;
-}
-
 struct samRec {
     unsigned SamOrd;
     std::string SamQn;
@@ -266,11 +255,12 @@ void dida_index(const int procRank, const int procSize, const char *refName) {
     }
 }
 
-std::vector< std::vector<bool> > loadFilter(const char *refName) {
+std::vector<BloomFilter> loadFilter(const char *refName) {
     int pIndex,chunk=1;
     //begin create filters
-    std::vector< std::vector<bool> > myFilters(opt::pnum);
-    
+    std::vector<BloomFilter> myFilters(opt::pnum,
+        BloomFilter(0, opt::nhash));
+
     std::cerr << "Loading filters ...\n";
 #pragma omp parallel for shared(myFilters) private(pIndex) schedule(static,chunk)
     for (pIndex=0; pIndex<opt::pnum; ++pIndex){
@@ -302,7 +292,7 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
                     }
                 }
                 //End
-                filInsert(myFilters, pIndex, bMer);
+                myFilters[pIndex].insert(bMer.c_str());
             }
         }
         uFile.close();
@@ -311,7 +301,7 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
     return myFilters;
 }
 
-void dispatchRead(const int procSize, const vector<string>& inFiles, const std::vector< std::vector<bool> > &myFilters) {
+void dispatchRead(const int procSize, const vector<string>& inFiles, const std::vector<BloomFilter> &myFilters) {
     int pIndex,chunk=1;
     int readLen=0, recLen=0;
     std::cerr << "Number of hash functions=" << opt::nhash << "\n";
@@ -370,7 +360,7 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
 						}
 					}
 					//END                    
-                    if (filContain(myFilters, pIndex-1, bMer)) {
+                    if (myFilters[pIndex-1][bMer.c_str()]) {
 #pragma omp critical
                         {
                             dspRead = true;
@@ -426,8 +416,8 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
 }
 
 void dida_dispatch(const int procRank, const int procSize, const vector<string>& inFiles, const char *refName) {
-   	if (procRank==0) {
-        std::vector< std::vector<bool> > myFilters = loadFilter(refName);
+    if (procRank==0) {
+        std::vector<BloomFilter> myFilters = loadFilter(refName);
         dispatchRead(procSize, inFiles, myFilters);
     }
 }
