@@ -15,7 +15,7 @@
 #include <string>
 #include <algorithm>
 #include <iostream>
-#include <tr1/unordered_map>
+#include <map>
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
@@ -36,7 +36,7 @@ class BloomFilter
   public:
 	
 	/** A set of headers in a Bloom filter file. */
-	typedef std::tr1::unordered_map<std::string, std::string> FileHeaderMap;
+	typedef std::map<std::string, std::string> FileHeaderMap;
 	/** A header line in a Bloom filter file. */
 	typedef FileHeaderMap::value_type FileHeader;
 	
