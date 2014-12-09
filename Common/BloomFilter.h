@@ -101,7 +101,7 @@ class BloomFilter
 	{
 		size_t len = strlen(key);
 		for (unsigned i = 0; i < m_numHashes; ++i)
-			insert(MurmurHash64A(key, len, i));
+			insert(MurmurHash64A(key, len, i) % m_size);
 	}
 
 	/** Operator for reading a bloom filter from a stream. */
