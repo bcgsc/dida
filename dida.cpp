@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <queue>
 #include <omp.h>
+#include <signal.h>
 
 #define PROGRAM "dida-mpi"
 
@@ -674,6 +675,22 @@ int main(int argc, char** argv) {
 	char processor_name[MPI_MAX_PROCESSOR_NAME];
 
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+
+	/**
+	 * The following line was needed to fix failures of the
+	 * system() call under OpenMPI 1.8.3. The system() call was
+	 * intermittently failing with exit status == -1, errno == 10,
+	 * and perror() reporting "no child processes".
+	 *
+	 * It appears that MPI_Init_thread calls "signal(SIGCHLD, SIG_IGN)"
+	 * which instructs the kernel to immediately cleanup completed
+	 * child processes (i.e. "zombie processes") without giving the
+	 * parent a chance to wait() on the child and obtain the exit
+	 * status.  For further background info, see:
+	 * http://stackoverflow.com/a/18438562
+	 */
+	signal(SIGCHLD, SIG_DFL);
+
 	MPI_Comm_size(MPI_COMM_WORLD, &procSize);
 	MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
 	if (procRank == 0) {
