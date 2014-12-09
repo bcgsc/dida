@@ -20,7 +20,7 @@
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
 /** Version number for Bloom filter file format. */
-#define FILE_FORMAT_VERSION (unsigned)0
+#define FILE_FORMAT_VERSION 0U
 
 /* Pre-defined headers in Bloom filter files. */
 #define VERSION_HEADER "file-format-version"
