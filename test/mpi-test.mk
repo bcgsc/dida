@@ -13,7 +13,7 @@ ref=ref.fa
 reads_url:=http://gage.cbcb.umd.edu/data/Staphylococcus_aureus/Data.original/frag_1.fastq.gz
 reads=reads.fq
 # output alignment files
-dida_sam=aln.sam
+dida_sam=dida.sam
 abyss_map_sam=abyss_map.sam
 
 #------------------------------------------------------------
@@ -21,13 +21,11 @@ abyss_map_sam=abyss_map.sam
 #------------------------------------------------------------
 
 # number of MPI tasks
-np:=4
-# number of target partitions
-p:=2
+np?=4
 # number of threads per task
-j:=1
+j?=1
 # min align length
-l:=60
+l?=60
 
 #------------------------------------------------------------
 # special targets
