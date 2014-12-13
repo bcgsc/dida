@@ -77,9 +77,9 @@ std::vector< std::vector<int> > getAdj(const char *uName, std::vector<int> &lenA
 		iss >> maxLen;
 	}
 	++maxLen;
-
-	std::ofstream imdFile;
-	if (procRank==0) imdFile.open("aln.sam");
+    
+    //std::ofstream imdFile;
+	//if (procRank==0) imdFile.open("aln.sam");
 
 	std::vector< std::vector<int> > adjList(maxLen);
 	lenArr.resize(maxLen,0);
@@ -92,7 +92,7 @@ std::vector< std::vector<int> > getAdj(const char *uName, std::vector<int> &lenA
 	while(getline(adjFile, line)) {
 		std::istringstream iss(proLine(line));
 		iss >> vertex >> uLen >> uSite;
-		if (procRank==0) imdFile << "@SQ\tSN:"<< vertex << "\tLN:" << uLen << "\n";
+		if (procRank==0) std::cout << "@SQ\tSN:"<< vertex << "\tLN:" << uLen << "\n";
 		lenArr[vertex]=uLen;
 		totLen+=uLen;
 		while(iss >> neighbour) adjList[vertex].push_back(neighbour);
@@ -102,7 +102,50 @@ std::vector< std::vector<int> > getAdj(const char *uName, std::vector<int> &lenA
 		if (adjList[i].size()) ++compNo;
 		if (lenArr[i]) ++utigNo;
 	}
-	if (procRank==0) imdFile.close();
+	//if (procRank==0) imdFile.close();
+	adjFile.close();
+	return adjList;
+}
+
+std::vector< std::vector<int> > wgetAdj(const char *uName, std::vector<int> &lenArr, long &totLen) {
+    std::string bName, eName;
+	getFname(uName, bName, eName);
+	std::stringstream ast;
+	ast << bName << ".adj";
+    
+	std::string line;
+	std::ifstream adjFile(ast.str().c_str());
+	int maxLen;
+	while(getline(adjFile, line)) {
+		std::istringstream iss(line);
+		iss >> maxLen;
+	}
+	++maxLen;
+    
+    std::ofstream infoFile("maxinf");   
+    infoFile << maxLen << "\n";
+    infoFile.close();
+    
+	std::vector< std::vector<int> > adjList(maxLen);
+	lenArr.resize(maxLen,0);
+    
+	adjFile.clear();
+	adjFile.seekg(0,adjFile.beg);
+    
+	int vertex, uLen, uSite, neighbour;
+	totLen=0;
+	while(getline(adjFile, line)) {
+		std::istringstream iss(proLine(line));
+		iss >> vertex >> uLen >> uSite;
+		lenArr[vertex]=uLen;
+		totLen+=uLen;
+		while(iss >> neighbour) adjList[vertex].push_back(neighbour);
+	}
+	int compNo=0, utigNo=0;
+	for (int i=0; i<maxLen; ++i) {
+		if (adjList[i].size()) ++compNo;
+		if (lenArr[i]) ++utigNo;
+	}
 	adjFile.close();
 	return adjList;
 }
@@ -251,7 +294,7 @@ std::string getPrtFilename(const char *refName, const int procRank)
 	return oss.str();
 }
 
-void distPar(const char *uName, const int, std::vector<int> &disArr, const int procRank) {
+void debug_distPar(const char *uName, const int, std::vector<int> &disArr, const int procRank) {
 
 	std::string aPath, uPath, bName, eName;
 	getFname(uName, bName, eName);
@@ -259,8 +302,9 @@ void distPar(const char *uName, const int, std::vector<int> &disArr, const int p
 	std::string line;
 	std::ofstream puFile;
 
-	std::stringstream astm;
-	uPath = getPrtFilename(uName, procRank);
+	std::stringstream ustm;
+	ustm << "debug_mref-" << procRank << ".fa";
+	uPath = ustm.str();
 	puFile.open(uPath.c_str());
 
 
@@ -307,10 +351,7 @@ void ddistPar(const char *uName, const int pNum, std::vector<int> &disArr) {
 	std::ofstream puFile[pNum];
 
 	for (int i = 0; i < pNum; ++i) {
-		std::stringstream astm;
-		std::stringstream ustm;
-        ustm << "dmref-" << i+1 << ".fa";
-        uPath = ustm.str();
+		uPath = getPrtFilename(uName, i+1);
 		puFile[i].open(uPath.c_str());
 	}
 
@@ -346,7 +387,52 @@ void ddistPar(const char *uName, const int pNum, std::vector<int> &disArr) {
 	uFile.close();
 }
 
-void distTarget(const char *uName, const int pNum, const int procRank) {
+void wdistPar(const char *uName, const int pNum, std::vector<int> &disArr) {
+    
+	std::string aPath, uPath, bName, eName;
+	getFname(uName, bName, eName);
+	std::ifstream uFile(uName);
+	std::string line;
+	std::ofstream puFile[pNum];
+    
+	for (int i = 0; i < pNum; ++i) {
+        uPath = getPrtFilename(uName, i+1);
+		puFile[i].open(uPath.c_str());
+	}
+    
+	//begin new patch for tony: .fa and .adj have different sizes. |.adj| > |.fa|
+	unsigned readId;
+	char hChar;
+	bool *maskVec = new bool [disArr.size()];
+	for (unsigned i=0; i<disArr.size(); ++i) maskVec[i]=true;
+	while(getline(uFile, line)) {
+		std::istringstream iss(line);
+		iss >> hChar >> readId;
+		maskVec[readId]=false;
+		getline(uFile, line);
+	}
+	for (unsigned i=0; i<disArr.size(); ++i)
+		if (maskVec[i]) disArr[i]=-1;
+	delete [] maskVec;
+	uFile.clear();
+	uFile.seekg(0,uFile.beg);
+	//end new patch for tony: .fa and .adj have different sizes. |.adj| > |.fa|
+    
+	for (unsigned i=0; i<disArr.size(); ++i)
+		if (disArr[i]!=-1) {
+			getline(uFile, line);
+			puFile[disArr[i]] << line << "\n";
+			getline(uFile, line);
+			puFile[disArr[i]] << line << "\n";
+		}
+    
+	for (int i = 0; i < pNum; ++i)
+		puFile[i].close();
+    
+	uFile.close();
+}
+
+void debug_distTarget(const char *uName, const int pNum, const int procRank) {
 	std::ifstream uFile(uName);
 	std::vector<int> lenArr;
 	std::string hLine, sLine, line;
@@ -402,7 +488,10 @@ void distTarget(const char *uName, const int pNum, const int procRank) {
 	uFile.seekg(0,uFile.beg);
 	std::ofstream puFile;
 
-	std::string uPath = getPrtFilename(uName, procRank);
+	
+    std::stringstream ustm;
+	ustm << "debug_mref-" << procRank << ".fa";
+    std::string uPath = ustm.str();
 	puFile.open(uPath.c_str());
     
 	int tIndex=0;
@@ -432,14 +521,20 @@ void ddistTarget(const char *uName, const int pNum) {
 	long totLen = 0;
 	int uLen = 0, minUlen=((unsigned) 1 << 31) -1;
 	getline(uFile, line);
+    if(line[0]=='>') {
+        hLine = line.substr(1,std::string::npos);
+    }
 	while (getline(uFile, line)) {
-		if (line[0] != '>')
+		if (line[0] != '>') {
 			uLen += line.length();
+        }
 		else {
 			if (uLen < minUlen)
 				minUlen = uLen;
 			totLen += uLen;
 			lenArr.push_back(uLen);
+            std::cout << "@SQ\tSN:"<< hLine << "\tLN:" << uLen << "\n";
+            hLine = line.substr(1,std::string::npos);
 			uLen = 0;
 		}
 	}
@@ -480,10 +575,11 @@ void ddistTarget(const char *uName, const int pNum) {
 	uFile.clear();
 	uFile.seekg(0,uFile.beg);
 	std::ofstream puFile[pNum];
-	for (int i = 0; i < pNum; ++i) {
-		std::stringstream ustm;
-        ustm << "dmref-" << i+1 << ".fa";
-		puFile[i].open(ustm.str().c_str());
+	for (int i = 0; i < pNum; ++i) {    
+        std::string uPath = getPrtFilename(uName, i+1);
+        //std::stringstream ustm;
+        //ustm << "dmref-" << i+1 << ".fa";
+		puFile[i].open(uPath.c_str());
 	}
 
 	int tIndex=0;
@@ -498,6 +594,87 @@ void ddistTarget(const char *uName, const int pNum) {
 		}
 	}
 
+	for (int i = 0; i < pNum; ++i)
+		puFile[i].close();
+	uFile.close();
+}
+
+void wdistTarget(const char *uName, const int pNum) {
+	std::ifstream uFile(uName);
+	std::vector<int> lenArr;
+	std::string hLine, sLine, line;
+	long totLen = 0;
+	int uLen = 0, minUlen=((unsigned) 1 << 31) -1;
+	getline(uFile, line);
+	while (getline(uFile, line)) {
+		if (line[0] != '>')
+			uLen += line.length();
+		else {
+			if (uLen < minUlen)
+				minUlen = uLen;
+			totLen += uLen;
+			lenArr.push_back(uLen);
+			uLen = 0;
+		}
+	}
+	totLen += uLen;
+	lenArr.push_back(uLen);
+    
+	std::cerr << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
+    
+    std::ofstream imdFile("maxinf");
+	imdFile<<lenArr.size()<<"\n";
+	imdFile.close();
+        
+	int tLen = lenArr.size();
+	std::vector<int> indArr(tLen);
+	for (int i=0;i<tLen;++i)
+		indArr[i]=i;
+	tSort(lenArr, indArr, 0, lenArr.size()-1);
+    
+	long nodeSize = totLen/pNum + pNum + 500;
+    
+	std::vector<long> nodeCap(pNum, nodeSize);
+	std::vector<int> disArr(lenArr.size(),-1);
+    
+	for (unsigned i=0; i < lenArr.size(); ++i) {
+		if (lenArr[indArr[i]] <= nodeSize) {
+			int bNode = findBnode(lenArr[indArr[i]], nodeCap, totLen);
+			if (bNode!=-1) {
+				disArr[indArr[i]] = bNode;
+				nodeCap[bNode]-=lenArr[indArr[i]];
+			}
+			else {
+				std::cerr << "Error in distributing target! size of target is greater than available node cap.\n" << lenArr[indArr[i]] << "\n";
+				exit(EXIT_FAILURE);
+			}
+		}
+		else {
+			std::cerr << "Error in distributing target! size of target is greater than whole node cap.\n";
+			exit(EXIT_FAILURE);
+		}
+	}
+    
+	uFile.clear();
+	uFile.seekg(0,uFile.beg);
+	std::ofstream puFile[pNum];
+	for (int i = 0; i < pNum; ++i) {
+        std::string uPath = getPrtFilename(uName, i+1);
+		puFile[i].open(uPath.c_str());
+	}
+    
+	int tIndex=0;
+	getline(uFile, line);
+	puFile[disArr[tIndex]] << line << "\n";
+	while (getline(uFile, line)) {
+		if (line[0] != '>')
+			puFile[disArr[tIndex]] << line << "\n";
+		else {
+			++tIndex;
+			puFile[disArr[tIndex]] << line << "\n";
+		}
+	}
+    
 	for (int i = 0; i < pNum; ++i)
 		puFile[i].close();
 	uFile.close();
@@ -519,7 +696,7 @@ inline bool adjExist (const char *uName) {
 	}
 }
 
-int getPrt(const char *uName, const int pNum, const int procRank) {
+int debug_getPrt(const char *uName, const int pNum, const int procRank) {
     clock_t sTime = clock();
 
 	if (adjExist(uName)) {
@@ -529,11 +706,11 @@ int getPrt(const char *uName, const int pNum, const int procRank) {
 		std::vector< std::vector<int> > adjList = getAdj(uName, lenArr, totLen, procRank);
 		std::vector< std::vector<int> > conComp = getCom(adjList, lenArr);
 		std::vector<int> disVec = compDist(conComp, lenArr, totLen, pNum);
-		distPar(uName, pNum, disVec, procRank);
+		debug_distPar(uName, pNum, disVec, procRank);
 	}
 	else {
 		std::cerr << "Static target partitioning.\n";
-		distTarget(uName, pNum, procRank);
+		debug_distTarget(uName, pNum, procRank);
 	}
 
 	std::cerr << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
@@ -557,6 +734,27 @@ int dgetPrt(const char *uName, const int pNum, const int procRank) {
 		ddistTarget(uName, pNum);
 	}
 
+	std::cerr << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
+	return 0;
+}
+
+int wgetPrt(const char *uName, const int pNum) {
+    clock_t sTime = clock();
+    
+	if (adjExist(uName)) {
+		std::cerr << "Dynamic target partitioning.\n";
+		std::vector<int> lenArr;
+		long totLen;
+		std::vector< std::vector<int> > adjList = wgetAdj(uName, lenArr, totLen);
+		std::vector< std::vector<int> > conComp = getCom(adjList, lenArr);
+		std::vector<int> disVec = compDist(conComp, lenArr, totLen, pNum);
+		wdistPar(uName, pNum, disVec);
+	}
+	else {
+		std::cerr << "Static target partitioning.\n";
+		wdistTarget(uName, pNum);
+	}
+    
 	std::cerr << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
 	return 0;
 }

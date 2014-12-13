@@ -20,6 +20,8 @@ void getFname(const char *, std::string &, std::string &);
 
 std::vector< std::vector<int> > getAdj(const char *, std::vector<int> &, long &, const int);
 
+std::vector< std::vector<int> > wgetAdj(const char *, std::vector<int> &, long &);
+
 std::vector< std::vector<int> > getCom(std::vector< std::vector<int> > &, std::vector<int> &);
 
 int findBnode(long, std::vector<long> &, long);
@@ -32,16 +34,24 @@ std::vector<int> compDist(std::vector< std::vector<int> > &, std::vector<int> &,
 
 std::string getPrtFilename(const char *refName, const int procRank);
 
-void distPar(const char *, const int, std::vector<int> &, const int);
+void debug_distPar(const char *, const int, std::vector<int> &, const int);
 
 void ddistPar(const char *, const int, std::vector<int> &);
 
-void distTarget(const char *, const int);
+void wdistPar(const char *, const int, std::vector<int> &);
+
+void debug_distTarget(const char *, const int,const int );
+
+void ddistTarget(const char *, const int);
+
+void wdistTarget(const char *, const int);
 
 inline bool adjExist (const char *);
 
-int getPrt(const char *, const int, const int);
+int debug_getPrt(const char *, const int, const int);
 
 int dgetPrt(const char *, const int, const int);
+
+int wgetPrt(const char *, const int);
 
 #endif

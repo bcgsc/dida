@@ -1,76 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <queue>
-#include <list>
-#include <cstdlib>
-#include <stdint.h>
-#include <getopt.h>
-
-#define PROGRAM "mrg"
-
-static const char VERSION_MESSAGE[] =
-PROGRAM " Version 0.1.2 \n"
-"Written by Hamid Mohamadi.\n"
-"Copyright 2014 Canada's Michael Smith Genome Science Centre\n";
-
-static const char USAGE_MESSAGE[] =
-"Usage: " PROGRAM " [OPTION]\n"
-"Merge partial SAM files resluted from alignment step into the final compliant SAM result.\n"
-"\n"
-" Options:\n"
-"\n"
-"  -p, --partition=N       value of N partitions\n"
-"  -a, --aligner=NAME      NAME aligner used for alignmet step\n"
-"  -m, --mode=NAME         use NAME mode for merging. fast: fast merging, ord: ordered merging, \
-mem: min memory merging, best: best quality sam record [ord]\n"
-"      --help              display this help and exit\n"
-"      --version           output version information and exit\n"
-"\n"
-"Report bugs to hmohamadi@bcgsc.ca.\n";
-
-static const char shortopts[] = "p:a:m:";
-
-enum { OPT_HELP = 1, OPT_VERSION };
-
-
-static const struct option longopts[] = {
-	{ "partition",	required_argument, NULL, 'p' },
-	{ "aligner",	required_argument, NULL, 'a' },
-	{ "mode",	required_argument, NULL, 'm' },
-	{ "help",	no_argument, NULL, OPT_HELP },
-	{ "version",	no_argument, NULL, OPT_VERSION },
-	{ NULL, 0, NULL, 0 }
-};
-
-struct samHed
-{
-    std::string SQ1;
-	char sn1;
-    char sn2;
-    char sn3;
-	unsigned sqId;
-    std::string SQ3;
-    int hedPr;
-};
-
-struct samRec
-{
-    long SamOrd;
-    std::string SamQn;
-    int SamFg;
-    std::string SamRf;
-    int SamPs;
-    int SamMq;
-    std::string SamCr;
-    std::string SamRn;
-    int SamPn;
-    int SamTl;
-    std::string SamSq;
-    std::string SamPh;
-    int SamPr;
-};
+#include "mrg.h"
 
 void getInf(unsigned &maxCont, unsigned &maxRead) {
 	std::ifstream infoFile("maxinf");
@@ -141,7 +69,9 @@ std::ostream& operator<<(std::ostream& os, const samRec& c) {
 }
 
 void memMer(const int pNum, const std::string &alignerName) {
-    std::string mapStr(alignerName);
+    std::string dumStr(alignerName);
+    
+    
 	std::ifstream samFiles[pNum+1];
 
 	for (int i = 0; i < pNum; ++i) {
@@ -216,7 +146,7 @@ void memMer(const int pNum, const std::string &alignerName) {
 }
 
 void fstMer(const int pNum, const std::string &alignerName) {
-    std::string mapStr(alignerName);
+    std::string dumStr(alignerName);
 	std::ifstream samFiles[pNum];
 
 	for (int i = 0; i < pNum; ++i) {
@@ -328,7 +258,7 @@ void fstMer(const int pNum, const std::string &alignerName) {
 }
 
 void fordMer(const int pNum, const std::string &alignerName) {
-    std::string mapStr(alignerName);
+    std::string dumStr(alignerName);
 	std::ifstream samFiles[pNum+1];
 
 	for (int i = 0; i < pNum; ++i) {
@@ -447,7 +377,7 @@ void bestMer(const int pNum, const std::string &alignerName) {
 
 	std::cerr<<"Maximum target ID="<<cntgCount<< "\nTotal number of queries="<<readCount<<"\n";
 
-    std::vector<uint8_t> cVisit(cntgCount,0);
+    std::vector<uint8_t> cVisit(cntgCount,0); 
     //uint8_t *cVisit = new uint8_t [cntgCount];
 	//for (unsigned i=0; i<cntgCount;++i) cVisit[i]=0;
 
@@ -618,61 +548,8 @@ void bestMer(const int pNum, const std::string &alignerName) {
 	delete [] qVisit;
 }
 
-int main(int argc, char** argv) {
+int call_merger(const int pNum, const std::string &alignerName, const std::string &runMode) {
 	clock_t sTime = clock();
-
-	bool die = false;
-    int pNum=0;
-	std::string alignerName;
-	std::string runMode;
-
-	for (int c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
-		std::istringstream arg(optarg != NULL ? optarg : "");
-		switch (c) {
-			case '?':
-				die = true; break;
-			case 'a':
-				arg >> alignerName; break;
-			case 'p':
-				arg >> pNum; break;
-			case 'm':
-				arg >> runMode; break;
-
-			case OPT_HELP:
-				std::cerr << USAGE_MESSAGE;
-				exit(EXIT_SUCCESS);
-			case OPT_VERSION:
-				std::cerr << VERSION_MESSAGE;
-				exit(EXIT_SUCCESS);
-		}
-		if (optarg != NULL && !arg.eof()) {
-			std::cerr << PROGRAM ": invalid option: `-"
-			<< (char)c << optarg << "'\n";
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	if (pNum == 0) {
-		std::cerr << PROGRAM ": missing mandatory option `-p'\n";
-		die = true;
-	}
-
-	if (alignerName == "") {
-		std::cerr << PROGRAM ": missing mandatory option `-a'\n";
-		die = true;
-	}
-
-	if (runMode == "") {
-		std::cerr << PROGRAM ": missing mandatory option `-m'\n";
-		die = true;
-	}
-
-	if (die) {
-		std::cerr << "Try `" << PROGRAM
-		<< " --help' for more information.\n";
-		exit(EXIT_FAILURE);
-	}
-
     if (runMode == "fast") {
     	std::cerr << "Fast MERGE:\n";
     	fstMer(pNum, alignerName);
@@ -695,3 +572,4 @@ int main(int argc, char** argv) {
     std::cout << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
     return 0;
 }
+

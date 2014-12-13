@@ -252,9 +252,7 @@ std::ifstream::pos_type filesize(const char* filename)
 }
 
 void dida_partition(const int procRank, const char *refName) {
-
     if (procRank == 0) {
-
         bool allPrtFilesExist = true;
         for (int i = 1; i <= opt::pnum; ++i) {
             if (!fileExists(getPrtFilename(refName, i))) {
@@ -273,8 +271,7 @@ void dida_partition(const int procRank, const char *refName) {
             }
             std::cerr << std::endl;
         } else {
-            for (int i = 1; i <= opt::pnum; ++i)
-                getPrt(refName, opt::pnum, i);
+                dgetPrt(refName, opt::pnum, procRank);
         }
 
     }

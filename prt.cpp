@@ -335,6 +335,10 @@ void distTarget(const char *uName, const int pNum) {
 	lenArr.push_back(uLen);
 
 	std::cout << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
+    std::ofstream imdFile("maxinf");
+	imdFile<<lenArr.size()<<"\n";
+	imdFile.close();
+    
 
 	int tLen = lenArr.size();
 	std::vector<int> indArr(tLen);
