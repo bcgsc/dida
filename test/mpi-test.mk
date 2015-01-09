@@ -21,13 +21,15 @@ abyss_map_sam=abyss_map.sam
 #------------------------------------------------------------
 
 # number of MPI tasks
-np:=4
-# number of target partitions
-p:=2
+np?=3
 # number of threads per task
-j:=1
+j?=1
 # min align length
-l:=60
+l?=60
+# num of reads to align
+n?=10000
+# command to run dida
+dida_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref)
 
 #------------------------------------------------------------
 # special targets
@@ -49,7 +51,7 @@ $(ref):
 	curl $(ref_url) | fold -w 100000 | awk '{print ">"i++; print $0}' > $(ref)
 
 $(reads):
-	curl $(reads_url) | gunzip -c | head -10000 > $(reads)
+	curl $(reads_url) | gunzip -c | head -$n > $(reads)
 
 $(reads).in: $(reads)
 	for read in $(reads); do echo $$read; done >$(reads).in
@@ -59,7 +61,7 @@ $(reads).in: $(reads)
 #------------------------------------------------------------
 
 $(dida_sam):  $(reads) $(ref)
-	mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref) >$(dida_sam)
+	$(dida_run) > $(dida_sam)
 
 $(abyss_map_sam): $(reads) $(ref)
 	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)
