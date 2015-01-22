@@ -130,13 +130,26 @@ struct faqRec {
 size_t getInfo(const char *aName, unsigned k) {
 	std::string line;
 	std::ifstream faFile(aName);
-	size_t totItm=0;
-	while (getline(faFile, line)) {
-		getline(faFile, line);
-		size_t uLen = line.length();
-		totItm+=uLen-k+1;
+
+    getline(faFile, line);
+    if (line[0]!='>') {
+        std::cerr << "Target file is not in correct format!\n";
+        exit(EXIT_FAILURE);
+    }
+    size_t totItm=0, uLen=0;
+    while (getline(faFile, line)) {
+		if (line[0] != '>')
+			uLen += line.length();
+		else {
+            if (uLen>=k)
+                totItm+=uLen-k+1;
+			uLen = 0;
+		}
 	}
-	std::cerr << "|totLen|=" << totItm << std::endl;
+    if (uLen>=k)
+        totItm+=uLen-k+1;
+    
+	std::cerr << "|totLen|=" << totItm << "\n";
 	faFile.close();
 	return totItm;
 }
@@ -201,10 +214,10 @@ void getCanon(std::string &bMer) {
     int p=0, hLen=(opt::bmer-1)/2;
     while (bMer[p] == b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
         ++p;
-        if(p>hLen) break;
+        if(p>=hLen) break;
     }
     if (bMer[p] > b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
-        for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<rIndex; ++lIndex,--rIndex) {
+        for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<=rIndex; ++lIndex,--rIndex) {
             char tmp = b2p[(unsigned char)bMer[rIndex]];
             bMer[rIndex] = b2p[(unsigned char)bMer[lIndex]];
             bMer[lIndex] = tmp;
@@ -241,17 +254,30 @@ std::vector< std::vector<bool> > loadFilter() {
         myFilters[pIndex].resize(filterSize);
         std::ifstream uFile((sstm.str()).c_str());
         
-        std::string line;
-        while (getline(uFile, line)) {
-            getline(uFile, line);
-            std::transform(line.begin(), line.end(), line.begin(), ::toupper);
-            long uL= line.length();
-            for (long j = 0; j < uL -opt::bmer+1; ++j) { 
-                std::string bMer = line.substr(j,opt::bmer);
-                getCanon(bMer);
-                filInsert(myFilters,pIndex,bMer);
+        std::string pline,line;
+        getline(uFile, pline);
+        while (getline(uFile, pline)) {
+            if (pline[0] != '>')
+                line += pline;
+            else {
+                std::transform(line.begin(), line.end(), line.begin(), ::toupper);
+                long uL= line.length();
+                for (long j = 0; j < uL -opt::bmer+1; ++j) {
+                    std::string bMer = line.substr(j,opt::bmer);
+                    getCanon(bMer);
+                    filInsert(myFilters,pIndex,bMer);
+                }
+                line.clear();
             }
         }
+        std::transform(line.begin(), line.end(), line.begin(), ::toupper);
+        long uL= line.length();
+        for (long j = 0; j < uL -opt::bmer+1; ++j) {
+            std::string bMer = line.substr(j,opt::bmer);
+            getCanon(bMer);
+            filInsert(myFilters,pIndex,bMer);
+        }
+        
         uFile.close();
     }
     
@@ -318,9 +344,8 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
                 for(size_t bIndex = 0; bIndex<readBuffer.size(); ++bIndex) {
                     faqRec bRead = readBuffer[bIndex];
                     size_t readLen = bRead.readSeq.length();
-                    size_t j=0;
-                    while (j < readLen) {
-                        if (j > readLen-opt::bmer) j=readLen-opt::bmer;
+                    //size_t j=0;
+                    for (size_t j=0; j <= readLen-opt::bmer; j+=opt::bmer_step) {
                         std::string bMer = bRead.readSeq.substr(j,opt::bmer);
                         getCanon(bMer);
                         if (filContain(myFilters, pIndex, bMer)) {
@@ -332,7 +357,6 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
                                 rdFiles[pIndex] << bRead.readHead << "\n" << bRead.readSeq << "\n+\n"<< bRead.readQual << "\n";
                             break;
                         }
-                        j+=opt::bmer_step;
                     }
                     
                 }
@@ -413,13 +437,16 @@ int main(int argc, char** argv) {
 		exit(EXIT_FAILURE);
 	}
     if (opt::bmer <= 0)
-		opt::bmer = opt::alen / 2;
+		opt::bmer = 3 * opt::alen / 4;
     
 	if (opt::bmer_step <= 0)
-		opt::bmer_step = opt::bmer;
+		opt::bmer_step = opt::alen-opt::bmer+1;
+    
+    std::cerr<<"bmer-step="<<opt::bmer_step<<"\n";
+    std::cerr<<"bmer="<<opt::bmer<<"\n";
+    std::cerr<<"alen="<<opt::alen<<"\n";
     
 	const char *libName(argv[argc-1]);
-    
     
     std::vector< std::vector<bool> > myFilters = loadFilter();
     dispatchRead(libName, myFilters);

@@ -129,6 +129,10 @@ std::vector< std::vector<int> > wgetAdj(const char *uName, std::vector<int> &len
 	std::vector< std::vector<int> > adjList(maxLen);
 	lenArr.resize(maxLen,0);
     
+    std::ofstream alnFile("aln.sam");
+    alnFile << "@HD\tVN:0.3\n";
+    alnFile << "@PG\tID:DIDA\tPN:DIDA\tVN:0.1.3\n";
+    
 	adjFile.clear();
 	adjFile.seekg(0,adjFile.beg);
     
@@ -137,6 +141,7 @@ std::vector< std::vector<int> > wgetAdj(const char *uName, std::vector<int> &len
 	while(getline(adjFile, line)) {
 		std::istringstream iss(proLine(line));
 		iss >> vertex >> uLen >> uSite;
+        alnFile << "@SQ\tSN:"<< vertex << "\tLN:" << uLen << "\n";
 		lenArr[vertex]=uLen;
 		totLen+=uLen;
 		while(iss >> neighbour) adjList[vertex].push_back(neighbour);
@@ -147,6 +152,7 @@ std::vector< std::vector<int> > wgetAdj(const char *uName, std::vector<int> &len
 		if (lenArr[i]) ++utigNo;
 	}
 	adjFile.close();
+    alnFile.close();
 	return adjList;
 }
 
@@ -522,7 +528,10 @@ void ddistTarget(const char *uName, const int pNum) {
 	int uLen = 0, minUlen=((unsigned) 1 << 31) -1;
 	getline(uFile, line);
     if(line[0]=='>') {
-        hLine = line.substr(1,std::string::npos);
+        std::istringstream hStm(line);
+        char sChar;
+        hStm >> sChar >> hLine;
+        //hLine = line.substr(1,std::string::npos);
     }
 	while (getline(uFile, line)) {
 		if (line[0] != '>') {
@@ -534,12 +543,17 @@ void ddistTarget(const char *uName, const int pNum) {
 			totLen += uLen;
 			lenArr.push_back(uLen);
             std::cout << "@SQ\tSN:"<< hLine << "\tLN:" << uLen << "\n";
-            hLine = line.substr(1,std::string::npos);
+            std::istringstream hStm(line);
+            char sChar;
+            hStm >> sChar >> hLine;
+            //hLine = line.substr(1,std::string::npos);
 			uLen = 0;
 		}
 	}
 	totLen += uLen;
 	lenArr.push_back(uLen);
+    
+    std::cout << "@SQ\tSN:"<< hLine << "\tLN:" << uLen << "\n";
 
 	std::cerr << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
 
@@ -605,7 +619,18 @@ void wdistTarget(const char *uName, const int pNum) {
 	std::string hLine, sLine, line;
 	long totLen = 0;
 	int uLen = 0, minUlen=((unsigned) 1 << 31) -1;
+    
+    std::ofstream alnFile("aln.sam");
+    alnFile << "@HD\tVN:0.3\n";
+    alnFile << "@PG\tID:DIDA\tPN:DIDA\tVN:0.1.3\n";
+    
 	getline(uFile, line);
+    if(line[0]=='>') {
+        std::istringstream hStm(line);
+        char sChar;
+        hStm >> sChar >> hLine;
+        //hLine = line.substr(1,std::string::npos);
+    }
 	while (getline(uFile, line)) {
 		if (line[0] != '>')
 			uLen += line.length();
@@ -614,11 +639,18 @@ void wdistTarget(const char *uName, const int pNum) {
 				minUlen = uLen;
 			totLen += uLen;
 			lenArr.push_back(uLen);
+            alnFile << "@SQ\tSN:"<< hLine << "\tLN:" << uLen << "\n";
+            std::istringstream hStm(line);
+            char sChar;
+            hStm >> sChar >> hLine;
 			uLen = 0;
 		}
 	}
 	totLen += uLen;
 	lenArr.push_back(uLen);
+    
+    alnFile << "@SQ\tSN:"<< hLine << "\tLN:" << uLen << "\n";
+    alnFile.close();
     
 	std::cerr << "|target|=" << totLen << "\t #seq=" << lenArr.size() << "\n";
     

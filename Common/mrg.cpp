@@ -69,56 +69,32 @@ std::ostream& operator<<(std::ostream& os, const samRec& c) {
 }
 
 void memMer(const int pNum, const std::string &alignerName) {
-    std::string dumStr(alignerName);
-    
-    
+    std::string mapStr(alignerName);
 	std::ifstream samFiles[pNum+1];
-
+    
 	for (int i = 0; i < pNum; ++i) {
 		std::stringstream sstm;
 		sstm << "aln-" << i+1 << ".sam";
 		samFiles[i].open(sstm.str().c_str());
 	}
 	samFiles[pNum].open("lreads.sam");
-
-    std::priority_queue< samHed, std::vector<samHed>, std::greater<samHed> > hedBuffer;
+    
     std::priority_queue< samRec, std::vector<samRec>, std::greater<samRec> > recBuffer;
-
-    std::string line, headSQ;
+    std::string line;
+    std::ofstream comFile("aln.sam", std::ios_base::app);
+    
+    // Skipping @
 	for (int i = 0; i < pNum; ++i) {
-		while (getline(samFiles[i], line)) {
-			std::istringstream iss(line);
-        	iss >> headSQ;
-        	if (headSQ == "@SQ") break;
-        	if (line[0] != '@') break;
-		}
-		if (headSQ == "@SQ")
-			hedBuffer.push(hedLoad(line,i));
-	}
-
-    std::ofstream comFile("aln.sam");
-
-    while (!hedBuffer.empty()) {
-        samHed cHed=hedBuffer.top();
-        comFile<<cHed<<"\n";
-        hedBuffer.pop();
-        if (getline(samFiles[cHed.hedPr], line)) {
-            if (line[0]=='@') {
-            	std::istringstream iss(line);
-            	iss >> headSQ;
-				if (headSQ == "@SQ")
-					hedBuffer.push(hedLoad(line,cHed.hedPr));
-            }
-            else
-                recBuffer.push(recLoad(line,cHed.hedPr));
-        }
+        while (getline(samFiles[i], line))
+            if (line[0]!='@') break;
+        recBuffer.push(recLoad(line,i));
     }
-
+    
     for (int dIndex = 1; dIndex <= 3; ++dIndex)
 		for (int i = 0; i < pNum+1; ++i)
 			if (getline(samFiles[i], line))
 				recBuffer.push(recLoad(line,i));
-
+    
     long psOrd = -1;
     std::string psHead;
     bool samVal = true;
@@ -140,102 +116,47 @@ void memMer(const int pNum, const std::string &alignerName) {
 		psOrd = cRec.SamOrd;
 		psHead = cRec.SamQn;
 	}
-
+    
     for (int i = 0; i < pNum+1; ++i) samFiles[i].close();
 	comFile.close();
 }
 
 void fstMer(const int pNum, const std::string &alignerName) {
-    std::string dumStr(alignerName);
+    std::string mapStr(alignerName);
 	std::ifstream samFiles[pNum];
-
+    
 	for (int i = 0; i < pNum; ++i) {
 		std::stringstream sstm;
 		sstm << "aln-" << i+1 << ".sam";
 		samFiles[i].open(sstm.str().c_str());
 	}
-
+    
     unsigned cntgCount=0,readCount=0;
     getInf(cntgCount, readCount);
-
+    
     std::cerr<<"Maximum target ID="<<cntgCount<< "\nTotal number of queries="<<readCount<<"\n";
-
-    uint8_t *cVisit = new uint8_t [cntgCount];
-	for (unsigned i=0; i<cntgCount;++i) cVisit[i]=0;
-
+    
 	std::string line, headSQ;
-	char sn1,sn2,sn3;
-	unsigned sqId;
-
     // First pass, Reading
-
-	int headEnd[pNum],samStart[pNum];
+	int headEnd[pNum];
 	for (int i = 0; i < pNum; ++i) {
-		headEnd[i]=-1;
-		samStart[i]=0;
-		while (getline(samFiles[i], line)) {
-			std::istringstream iss(line);
-			iss >> headSQ;
-			++headEnd[i];
-			if (headSQ == "@SQ")
-				break;
-			if (line[0] != '@') {
-				//headEnd[i]=-1;
-				break;
-			}
-		}
-		//if (headSQ == "@SQ") hedBuffer.push(hedLoad(line,i));
-		// inserting @SQ info into cVisit
-		do {
-			std::istringstream iss(line);
-			iss>>headSQ>>sn1>>sn2>>sn3>>sqId;
-			if (headSQ != "@SQ") break;
-			cVisit[sqId]=(uint8_t)(i+1);
-		} while(getline(samFiles[i], line));
-		//Counting @ after @SQ
-		do {
-			if (line[0] != '@') break;
-			++samStart[i];
-		} while(getline(samFiles[i], line));
+		headEnd[i]=0;
+        while (getline(samFiles[i], line)) {
+            if (line[0]!='@') break;
+            ++headEnd[i];
+        }
 	}
-
-	// For tomorrow 9 July Counter for start of @SQ in the above snippet
+    
     // Second pass, Writing
-    std::ofstream comFile("aln.sam");
-
+    std::ofstream comFile("aln.sam", std::ios_base::app);
+    
     for (int i = 0; i < pNum; ++i) {
 		samFiles[i].clear();
 		samFiles[i].seekg(0,samFiles[i].beg);
-		//Skipping two header lines from each sam File
-        /*if (alignerName=="abyss-map") {
-            getline(samFiles[i], line);
-            getline(samFiles[i], line);
-        }
-        if (alignerName=="bowtie") {
-            //Skipping one header line from each sam File
-            getline(samFiles[i], line);
-        }*/
 		for (int j = 0; j < headEnd[i]; ++j)
 			getline(samFiles[i], line);
 	}
-
-    for (unsigned i = 0; i < cntgCount; ++i) {
-		if (cVisit[i]) {
-			getline(samFiles[cVisit[i]-1],line);
-			comFile<<line<<"\n";
-		}
-	}
-    delete [] cVisit;
-
-    /*if (alignerName=="bowtie") {
-		for (int i = 0; i < pNum; ++i) {
-			getline(samFiles[i], line);
-		}
-	}*/
-    for (int i = 0; i < pNum; ++i)
-    	for (int j = 0; j < samStart[i]; ++j)
-    		getline(samFiles[i], line);
-
+    
     bool inIndex[pNum];
 	for (int pIndex = 0; pIndex < pNum; ++pIndex)
 		inIndex[pIndex] = true;
@@ -252,60 +173,40 @@ void fstMer(const int pNum, const std::string &alignerName) {
 					--inCount;
 				}
 	    	}
-
+    
     for (int i = 0; i < pNum; ++i) samFiles[i].close();
 	comFile.close();
 }
 
 void fordMer(const int pNum, const std::string &alignerName) {
-    std::string dumStr(alignerName);
+    std::string mapStr(alignerName);
 	std::ifstream samFiles[pNum+1];
-
+    
 	for (int i = 0; i < pNum; ++i) {
 		std::stringstream sstm;
 		sstm << "aln-" << i+1 << ".sam";
 		samFiles[i].open(sstm.str().c_str());
 	}
 	samFiles[pNum].open("lreads.sam");
-
+    
     unsigned cntgCount=0,readCount=0;
     getInf(cntgCount, readCount);
-
+    
     std::cerr<<"Maximum target ID="<<cntgCount<< "\nTotal number of queries="<<readCount<<"\n";
     
-    uint8_t *cVisit = new uint8_t [cntgCount];
-	for (unsigned i=0; i<cntgCount;++i) cVisit[i]=0;
-
 	std::vector< std::vector<uint8_t> > ordList(readCount);
-
-    char sn1,sn2,sn3;
-	unsigned sqId,readId,bitFg;
+    
+	unsigned readId,bitFg;
     std::string line, readHead, headSQ;
-
+    
     // First pass, Reading
-	int headEnd[pNum],samStart[pNum];
+	int headEnd[pNum];
 	for (int i = 0; i < pNum; ++i) {
-		headEnd[i]=-1;
-		samStart[i]=0;
-		while (getline(samFiles[i], line)) {
-			std::istringstream iss(line);
-			iss >> headSQ;
-			++headEnd[i];
-			if (headSQ == "@SQ") break;
-			if (line[0] != '@') break;
-		}
-		// inserting @SQ info into cVisit
-		do {
-			std::istringstream iss(line);
-			iss>>headSQ>>sn1>>sn2>>sn3>>sqId;
-			if (headSQ != "@SQ") break;
-			cVisit[sqId]=(uint8_t)(i+1);
-		} while (getline(samFiles[i], line));
-		//Discarding @ after @SQ
-		do {
-			if (line[0] != '@') break;
-			++samStart[i];
-		} while (getline(samFiles[i], line));
+		headEnd[i]=0;
+        while (getline(samFiles[i], line)) {
+            if (line[0]!='@') break;
+            ++headEnd[i];
+        }
 		// inserting SAM info into ordList
         do {
             std::istringstream iss(line);
@@ -313,33 +214,21 @@ void fordMer(const int pNum, const std::string &alignerName) {
             ordList[readId].push_back((uint8_t)(i+1));
         } while (getline(samFiles[i], line));
 	}
-
+    
     // Second pass, Writing
-    std::ofstream comFile("aln.sam");
-
+    std::ofstream comFile("aln.sam", std::ios_base::app);
+    
     for (int i = 0; i < pNum; ++i) {
 		samFiles[i].clear();
 		samFiles[i].seekg(0,samFiles[i].beg);
-		//Discarding @ before @SQ
+		//Discarding @
 		for (int j = 0; j < headEnd[i]; ++j)
 			getline(samFiles[i], line);
 	}
     samFiles[pNum].clear();
 	samFiles[pNum].seekg(0,samFiles[pNum].beg);
-
-	for (unsigned i=0; i<cntgCount; ++i) {
-		if (cVisit[i]) {
-			getline(samFiles[cVisit[i]-1],line);
-			comFile<<line<<"\n";
-		}
-	}
-    delete [] cVisit;
-
-    //Discarding @ after @SQ
-    for (int i = 0; i < pNum; ++i)
-    	for (int j = 0; j < samStart[i]; ++j)
-    		getline(samFiles[i], line);
-
+    
+    
     char colChar;
     for (unsigned i=0; i<readCount; ++i) {
 		bool samVal = false;
@@ -358,76 +247,53 @@ void fordMer(const int pNum, const std::string &alignerName) {
 			comFile<<readHead<<"\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
 		}
     }
-
+    
     for (int i = 0; i < pNum+1; ++i) samFiles[i].close();
 	comFile.close();
 }
 
 void bestMer(const int pNum, const std::string &alignerName) {
 	std::ifstream samFiles[pNum];
-
+    
 	for (int i = 0; i < pNum; ++i) {
 		std::stringstream sstm;
 		sstm << "aln-" << i+1 << ".sam";
 		samFiles[i].open(sstm.str().c_str());
 	}
-
+    
 	unsigned cntgCount=0,readCount=0;
     getInf(cntgCount, readCount);
-
+    
 	std::cerr<<"Maximum target ID="<<cntgCount<< "\nTotal number of queries="<<readCount<<"\n";
-
-    std::vector<uint8_t> cVisit(cntgCount,0); 
-    //uint8_t *cVisit = new uint8_t [cntgCount];
-	//for (unsigned i=0; i<cntgCount;++i) cVisit[i]=0;
-
+    
 	uint8_t *rVisit = new uint8_t [readCount];
 	for(unsigned i=0; i<readCount;++i) rVisit[i]=0;
-
+    
 	uint16_t *qVisit = new uint16_t [readCount];
 	for(unsigned i=0; i<readCount;++i) qVisit[i]=0;
-
+    
 	uint16_t *mVisit = new uint16_t [readCount];
 	for(unsigned i=0; i<readCount;++i) mVisit[i]=0;
-
+    
 	uint16_t *s1Visit = new uint16_t [readCount];
 	for(unsigned i=0; i<readCount;++i) s1Visit[i]=0;
-
+    
 	uint16_t *s2Visit = new uint16_t [readCount];
 	for(unsigned i=0; i<readCount;++i) s2Visit[i]=0;
-
-	char sn1,sn2,sn3;
-	unsigned sqId,readId, bitFg, refId, readPos;
+    
+    unsigned readId, bitFg, refId, readPos;
     std::string line, readHead, headSQ;
 	uint16_t mVal, s1Val, s2Val, rQual, cgV1, cgV2, cgV3;
     char colChar, cgC1, cgC2, cgC3;
-
+    
     // First pass, Reading
-	int headEnd[pNum],samStart[pNum];
+	int headEnd[pNum];
 	for (int i = 0; i < pNum; ++i) {
-		headEnd[i]=-1;
-		samStart[i]=0;
-		while (getline(samFiles[i], line)) {
-			std::istringstream iss(line);
-			iss >> headSQ;
-			++headEnd[i];
-			if (headSQ == "@SQ") break;
-			if (line[0] != '@') break;
-		}
-		// inserting @SQ info into cVisit
-		do {
-			std::istringstream iss(line);
-			iss>>headSQ>>sn1>>sn2>>sn3>>sqId;
-			if (headSQ != "@SQ") break;
-            if (sqId > cntgCount) cVisit.resize(sqId+1,0);
-			cVisit[sqId]=(uint8_t)(i+1);
-		} while (getline(samFiles[i], line));
-		//Discarding @ after @SQ
-		do {
-			if (line[0] != '@') break;
-			++samStart[i];
-		} while (getline(samFiles[i], line));
-		// inserting SAM info into ordList
+		headEnd[i]=0;
+        while (getline(samFiles[i], line)) {
+            if (line[0]!='@') break;
+            ++headEnd[i];
+        }
         do {
             std::istringstream iss(line);
             cgV1=cgV2=cgV3=0;
@@ -457,47 +323,31 @@ void bestMer(const int pNum, const std::string &alignerName) {
 				rVisit[readId]=(uint8_t)(i+1);
         } while (getline(samFiles[i], line));
 	}
-
-	unsigned alignedCount=0;
+    
+    unsigned alignedCount=0;
 	for (unsigned i = 0; i < readCount; ++i)
 		if(qVisit[i])++alignedCount;
 	std::cerr << "Number of the aligned reads: " << alignedCount << "\t" << (alignedCount*100.0/readCount) << "%\n";
-	unsigned totalTarget=0;
-	for (unsigned i = 0; i < cntgCount; ++i)
-		if(cVisit[i])++totalTarget;
-	std::cerr << "Number of tareget sequences: " << totalTarget << "\n";
-
+    
     // Second pass, Writing
-    std::ofstream comFile("aln.sam");
-
+    std::ofstream comFile("aln.sam", std::ios_base::app);
+    
     for (int i = 0; i < pNum; ++i) {
 		samFiles[i].clear();
 		samFiles[i].seekg(0,samFiles[i].beg);
-		//Discarding @ before @SQ
+		//Discarding @
 		for (int j = 0; j < headEnd[i]; ++j)
 			getline(samFiles[i], line);
 	}
-
-    for (unsigned i=0; i<cntgCount; ++i) {
-		if (cVisit[i]) {
-			getline(samFiles[cVisit[i]-1],line);
-			comFile<<line<<"\n";
-		}
-	}
-	//delete [] cVisit;
+    
 	delete [] mVisit;
 	delete [] s1Visit;
 	delete [] s2Visit;
-
-    //Discarding @ after @SQ
-    for (int i = 0; i < pNum; ++i)
-    	for (int j = 0; j < samStart[i]; ++j)
-    		getline(samFiles[i], line);
-
+    
 	std::string cigStr, rNext,seqStr, qualStr;
 	unsigned pNext;
 	int tLen;
-
+    
 	std::ifstream nullSam("lreads.sam");
 	bool pairSign = true;
 	if (alignerName=="abyss-map") {
@@ -509,7 +359,7 @@ void bestMer(const int pNum, const std::string &alignerName) {
 		nullSam.clear();
 		nullSam.seekg(0,nullSam.beg);
 	}
-
+    
 	for (unsigned i=0; i<readCount; ++i) {
 		if (rVisit[i]) {
 			while (getline(samFiles[rVisit[i]-1],line)) {
@@ -539,7 +389,7 @@ void bestMer(const int pNum, const std::string &alignerName) {
 				comFile << readHead << "/" << (readId % 2 + 1) << "\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
 		}
     }
-
+    
     for (int i = 0; i < pNum; ++i)
     	samFiles[i].close();
     nullSam.close();

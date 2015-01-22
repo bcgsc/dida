@@ -136,16 +136,29 @@ static const char b2p[256] = {
 size_t getInfo(const char *aName, unsigned k){
 	std::string line;
 	std::ifstream faFile(aName);
-	size_t totItm=0;
+	size_t totItm=0, uLen=0;
 	size_t fasta_lines = 0;
-	while(getline(faFile, line)){
-		getline(faFile, line);
-		size_t uLen = line.length();
-		totItm+=uLen-k+1;
-		++fasta_lines;
+    
+    getline(faFile, line);
+    if (line[0]!='>') {
+        std::cerr << "Target file is not in correct format!\n";
+        exit(EXIT_FAILURE);
+    }
+	while (getline(faFile, line)) {
+		if (line[0] != '>')
+			uLen += line.length();
+		else {
+            if (uLen>=k)
+                totItm+=uLen-k+1;
+			uLen = 0;
+            ++fasta_lines;
+		}
 	}
+    if (uLen>=k)
+        totItm+=uLen-k+1;
+    
 	if (fasta_lines == 0) {
-		cerr << PROGRAM ": error: failed to read from file `" << aName << "'." << endl;
+        std::cerr << PROGRAM ": error: failed to read from file `" << aName << "'." << endl;
 	}
 	assert(fasta_lines > 0);
 	assert(totItm > 0); // Require that there be at least one item in the file
@@ -208,6 +221,21 @@ bool filContain(const std::vector< std::vector<bool> > &myFilters, const unsigne
 		if (!myFilters[pn][MurmurHash64A(bMer.c_str(), opt::bmer, i) % myFilters[pn].size()])
 			return false;
 	return true;
+}
+
+void getCanon(std::string &bMer) {
+    int p=0, hLen=(opt::bmer-1)/2;
+    while (bMer[p] == b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
+        ++p;
+        if(p>=hLen) break;
+    }
+    if (bMer[p] > b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
+        for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<=rIndex; ++lIndex,--rIndex) {
+            char tmp = b2p[(unsigned char)bMer[rIndex]];
+            bMer[rIndex] = b2p[(unsigned char)bMer[lIndex]];
+            bMer[lIndex] = tmp;
+        }
+    }
 }
 
 struct samRec {
@@ -319,32 +347,30 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
         myFilters[pIndex].resize(filterSize);
         
         std::ifstream uFile(refPartName.c_str());
-        std::string line;
-        while (getline(uFile, line)){
-            getline(uFile, line);
-            std::transform(line.begin(), line.end(), line.begin(), ::toupper);
-            long uL= line.length();
-            for(long j = 0; j < uL -opt::bmer+1; ++j) {
-				assert((int)line.size() > j);
-//				assert((int)line.size() > j + opt::bmer);
-                std::string bMer = line.substr(j,opt::bmer);
-                //Begin
-                int p=0,hLen=(opt::bmer-1)/2;
-                while (bMer[p] == b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
-                    ++p;
-                    if(p>hLen)break;
+        std::string pline,line;
+        getline(uFile, pline);
+        while (getline(uFile, pline)) {
+            if (pline[0] != '>')
+                line += pline;
+            else {
+                std::transform(line.begin(), line.end(), line.begin(), ::toupper);
+                long uL= line.length();
+                for (long j = 0; j < uL -opt::bmer+1; ++j) {
+                    std::string bMer = line.substr(j,opt::bmer);
+                    getCanon(bMer);
+                    filInsert(myFilters,pIndex,bMer);
                 }
-                if (bMer[p] > b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
-                    for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<rIndex; ++lIndex,--rIndex) {
-                        char tmp = b2p[(unsigned char)bMer[rIndex]];
-                        bMer[rIndex] = b2p[(unsigned char)bMer[lIndex]];
-                        bMer[lIndex] = tmp;
-                    }
-                }
-                //End
-                filInsert(myFilters, pIndex, bMer);
+                line.clear();
             }
         }
+        std::transform(line.begin(), line.end(), line.begin(), ::toupper);
+        long uL= line.length();
+        for (long j = 0; j < uL -opt::bmer+1; ++j) {
+            std::string bMer = line.substr(j,opt::bmer);
+            getCanon(bMer);
+            filInsert(myFilters,pIndex,bMer);
+        }
+        
         uFile.close();
     }
     std::cerr<< "Loading BF done!\n";
@@ -390,26 +416,10 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
             bool dspRead = false;
 #pragma omp parallel for shared(myFilters, dspRead) private(pIndex) schedule(static,chunk)
             for(pIndex=1; pIndex<=opt::pnum; ++pIndex) {
-                int j=0;
-                while (j < readLen) {
-                    if (j > readLen-opt::bmer)
-                        j=readLen-opt::bmer;
+                for (int j=0; j <= readLen-opt::bmer; j+=opt::bmer_step) {
 					assert((int)readSeq.size() > j);
                     std::string bMer = readSeq.substr(j,opt::bmer);
-                    //Begin preprocess k-mer
-					int p=0,hLen=(opt::bmer-1)/2;
-					while (bMer[p] == b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
-						++p;
-						if(p>hLen)break;
-					}
-					if (bMer[p] > b2p[(unsigned char)bMer[opt::bmer-1-p]]) {
-						for (int lIndex = p, rIndex = opt::bmer-1-p; lIndex<rIndex; ++lIndex,--rIndex) {
-							char tmp = b2p[(unsigned char)bMer[rIndex]];
-							bMer[rIndex] = b2p[(unsigned char)bMer[lIndex]];
-							bMer[lIndex] = tmp;
-						}
-					}
-					//END                    
+                    getCanon(bMer);                    
                     if (filContain(myFilters, pIndex-1, bMer)) {
 #pragma omp critical
                         {
@@ -428,7 +438,6 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
                         }
                         break;
                     }
-                    j+=opt::bmer_step;
                 }
             }
             if (!dspRead)
@@ -699,10 +708,10 @@ int main(int argc, char** argv) {
 	}
 
 	if (opt::bmer <= 0)
-		opt::bmer = opt::alen / 2;
+		opt::bmer = 3 * opt::alen / 4;
 
 	if (opt::bmer_step <= 0)
-		opt::bmer_step = opt::bmer;
+		opt::bmer_step = opt::alen - opt::bmer +1;
 
 	vector<string> inFiles;
 	for (int i = optind; i < argc-1; ++i) {
