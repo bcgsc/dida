@@ -13,7 +13,8 @@ ref=ref.fa
 reads_url:=http://gage.cbcb.umd.edu/data/Staphylococcus_aureus/Data.original/frag_1.fastq.gz
 reads=reads.fq
 # output alignment files
-dida_sam=aln.sam
+dida_mpi_sam=dida_mpi.sam
+dida_wrapper_sam=dida_wrapper.sam
 abyss_map_sam=abyss_map.sam
 
 #------------------------------------------------------------
@@ -28,8 +29,9 @@ j?=1
 l?=60
 # num of reads to align
 n?=10000
-# command to run dida
-dida_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref)
+# commands to run dida
+dida_mpi_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref)
+dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads) $(ref)
 
 #------------------------------------------------------------
 # special targets
@@ -37,13 +39,13 @@ dida_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref)
 
 .PHONY: clean identity_test
 
-default: identity_test
+default: mpi_test
 
 clean:
-	rm -f $(dida_sam) $(abyss_map_sam) ref-* *.lines
+	rm -f $(dida_mpi_sam) $(dida_wrapper_sam) $(abyss_map_sam) ref-* *.lines
 
 #------------------------------------------------------------
-# downloading/building test input data 
+# downloading/building test input data
 #------------------------------------------------------------
 
 # download ref and split into chunks of 100,000bp or less
@@ -60,8 +62,11 @@ $(reads).in: $(reads)
 # running DIDA/abyss-map
 #------------------------------------------------------------
 
-$(dida_sam):  $(reads) $(ref)
-	$(dida_run) > $(dida_sam)
+$(dida_mpi_sam):  $(reads) $(ref)
+	$(dida_mpi_run) > $@
+
+$(dida_wrapper_sam): $(reads) $(ref)
+	$(dida_wrapper_run) > $@
 
 $(abyss_map_sam): $(reads) $(ref)
 	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)
@@ -70,10 +75,15 @@ $(abyss_map_sam): $(reads) $(ref)
 # tests
 #------------------------------------------------------------
 
-identity_test: $(abyss_map_sam) $(dida_sam)
-	compare-sam $(abyss_map_sam) $(dida_sam)
+mpi_test: $(abyss_map_sam) $(dida_mpi_sam)
+	compare-sam $(abyss_map_sam) $(dida_mpi_sam)
+	@echo $@": PASSED!"
 
-simple_identity_test: $(abyss_map_sam) $(dida_sam)
+wrapper_test: $(abyss_map_sam) $(dida_wrapper_sam)
+	compare-sam $(abyss_map_sam) $(dida_wrapper_sam)
+	@echo $@": PASSED!"
+
+simple_identity_test: $(abyss_map_sam) $(dida_mpi_sam)
 	comm --nocheck-order -3 \
 		<(egrep -v '^@' $(abyss_map_sam) |awk '$$5 != 0') \
 		<(egrep -v '^@' $(dida_sam) |awk '$$5 != 0')
