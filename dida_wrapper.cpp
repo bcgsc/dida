@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <queue>
 #include <omp.h>
+#include <signal.h>
 
 #define PROGRAM "dida-wrapper"
 
@@ -710,6 +711,14 @@ int main(int argc, char** argv) {
 	int procSize, procRank, provided;
     
 	MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+
+	// OpenMPI's MPI_Init/MPI_Init_thread messes with the
+	// SIGCHLD handler, which causes problems with fork()
+	if (signal(SIGCHLD, SIG_DFL) == SIG_ERR) {
+		perror("signal");
+		exit(EXIT_FAILURE);
+	}
+
 	MPI_Comm_size(MPI_COMM_WORLD, &procSize);
 	MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
     
