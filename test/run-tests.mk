@@ -12,9 +12,10 @@ ref=ref.fa
 # query seqs for alignments
 reads_url:=http://gage.cbcb.umd.edu/data/Staphylococcus_aureus/Data.original/frag_1.fastq.gz
 reads=reads.fq
+reads_in=reads.in
 # output alignment files
 dida_mpi_sam=dida_mpi.sam
-dida_wrapper_sam=dida_wrapper.sam
+dida_wrapper_sam=aln.sam
 abyss_map_sam=abyss_map.sam
 
 #------------------------------------------------------------
@@ -31,7 +32,7 @@ l?=60
 n?=10000
 # commands to run dida
 dida_mpi_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref)
-dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads) $(ref)
+dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads_in) $(ref)
 
 #------------------------------------------------------------
 # special targets
@@ -55,8 +56,8 @@ $(ref):
 $(reads):
 	curl $(reads_url) | gunzip -c | head -$n > $(reads)
 
-$(reads).in: $(reads)
-	for read in $(reads); do echo $$read; done >$(reads).in
+$(reads_in): $(reads)
+	for read in $(reads); do echo $$read; done > $@
 
 #------------------------------------------------------------
 # running DIDA/abyss-map
@@ -65,8 +66,8 @@ $(reads).in: $(reads)
 $(dida_mpi_sam):  $(reads) $(ref)
 	$(dida_mpi_run) > $@
 
-$(dida_wrapper_sam): $(reads) $(ref)
-	$(dida_wrapper_run) > $@
+$(dida_wrapper_sam): $(reads_in) $(reads) $(ref)
+	$(dida_wrapper_run)
 
 $(abyss_map_sam): $(reads) $(ref)
 	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)
