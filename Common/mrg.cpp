@@ -1,4 +1,5 @@
 #include "mrg.h"
+#include <iostream>
 
 void getInf(unsigned &maxCont, unsigned &maxRead) {
 	std::ifstream infoFile("maxinf");
@@ -81,7 +82,6 @@ void memMer(const int pNum, const std::string &alignerName) {
     
     std::priority_queue< samRec, std::vector<samRec>, std::greater<samRec> > recBuffer;
     std::string line;
-    std::ofstream comFile("aln.sam", std::ios_base::app);
     
     // Skipping @
 	for (int i = 0; i < pNum; ++i) {
@@ -102,13 +102,13 @@ void memMer(const int pNum, const std::string &alignerName) {
 		samRec cRec=recBuffer.top();
 		if (cRec.SamOrd != psOrd) {
 			if (!samVal)
-				comFile<<psHead<<"\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
+				std::cout<<psHead<<"\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
 			else
 				samVal = false;
 		}
 		if (cRec.SamFg != 4) {
 			samVal = true;
-			comFile<<cRec<<"\n";
+			std::cout<<cRec<<"\n";
 		}
 		recBuffer.pop();
 		if (getline(samFiles[cRec.SamPr], line))
@@ -118,7 +118,6 @@ void memMer(const int pNum, const std::string &alignerName) {
 	}
     
     for (int i = 0; i < pNum+1; ++i) samFiles[i].close();
-	comFile.close();
 }
 
 void fstMer(const int pNum, const std::string &alignerName) {
@@ -148,7 +147,6 @@ void fstMer(const int pNum, const std::string &alignerName) {
 	}
     
     // Second pass, Writing
-    std::ofstream comFile("aln.sam", std::ios_base::app);
     
     for (int i = 0; i < pNum; ++i) {
 		samFiles[i].clear();
@@ -166,7 +164,7 @@ void fstMer(const int pNum, const std::string &alignerName) {
 	    	if (inIndex[pIndex]) {
 	    		if (getline(samFiles[pIndex],line)) {
 	    			size_t pos = line.find_first_of(":");
-	    			comFile<<line.substr(pos+1, std::string::npos)<<"\n";
+	    			std::cout<<line.substr(pos+1, std::string::npos)<<"\n";
 	    		}
 				else {
 					inIndex[pIndex] = false;
@@ -175,7 +173,6 @@ void fstMer(const int pNum, const std::string &alignerName) {
 	    	}
     
     for (int i = 0; i < pNum; ++i) samFiles[i].close();
-	comFile.close();
 }
 
 void fordMer(const int pNum, const std::string &alignerName) {
@@ -216,7 +213,6 @@ void fordMer(const int pNum, const std::string &alignerName) {
 	}
     
     // Second pass, Writing
-    std::ofstream comFile("aln.sam", std::ios_base::app);
     
     for (int i = 0; i < pNum; ++i) {
 		samFiles[i].clear();
@@ -239,17 +235,16 @@ void fordMer(const int pNum, const std::string &alignerName) {
 			if (bitFg!=4) {
 				samVal=true;
 				size_t pos = line.find_first_of(":");
-				comFile<<line.substr(pos+1, std::string::npos)<<"\n";
+				std::cout<<line.substr(pos+1, std::string::npos)<<"\n";
 				//comFile << line << "\n";
 			}
 		}
 		if (!samVal) {
-			comFile<<readHead<<"\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
+			std::cout<<readHead<<"\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
 		}
     }
     
     for (int i = 0; i < pNum+1; ++i) samFiles[i].close();
-	comFile.close();
 }
 
 void bestMer(const int pNum, const std::string &alignerName) {
@@ -330,7 +325,6 @@ void bestMer(const int pNum, const std::string &alignerName) {
 	std::cerr << "Number of the aligned reads: " << alignedCount << "\t" << (alignedCount*100.0/readCount) << "%\n";
     
     // Second pass, Writing
-    std::ofstream comFile("aln.sam", std::ios_base::app);
     
     for (int i = 0; i < pNum; ++i) {
 		samFiles[i].clear();
@@ -370,10 +364,10 @@ void bestMer(const int pNum, const std::string &alignerName) {
 					//new change to import Qual=0 to repetitive aln
 					if (qVisit[i]!=0 || bitFg == 4) {
 						size_t pos = line.find_first_of(":");
-						comFile<<line.substr(pos+1, std::string::npos)<<"\n";
+						std::cout<<line.substr(pos+1, std::string::npos)<<"\n";
 					}
 					else
-						comFile<<readHead<<"\t"<<bitFg<<"\t"<<refId<<"\t"<<readPos<<"\t"<<"0\t"<<
+						std::cout<<readHead<<"\t"<<bitFg<<"\t"<<refId<<"\t"<<readPos<<"\t"<<"0\t"<<
 						cigStr<<"\t"<<rNext<<"\t"<<pNext<<"\t"<<tLen<<"\t"<<seqStr<<"\t"<<qualStr<<"\n";
 					break;
 				}
@@ -384,16 +378,15 @@ void bestMer(const int pNum, const std::string &alignerName) {
 			std::istringstream iss(line);
 			iss>> readId >> colChar >> readHead;
 			if (pairSign)
-				comFile << readHead << "\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
+				std::cout << readHead << "\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
 			else
-				comFile << readHead << "/" << (readId % 2 + 1) << "\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
+				std::cout << readHead << "/" << (readId % 2 + 1) << "\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
 		}
     }
     
     for (int i = 0; i < pNum; ++i)
     	samFiles[i].close();
     nullSam.close();
-	comFile.close();
 	delete [] rVisit;
 	delete [] qVisit;
 }
@@ -419,7 +412,7 @@ int call_merger(const int pNum, const std::string &alignerName, const std::strin
     else
     	std::cerr << "Error, merge mode not specified! Please choose fast, mord, or ord.\n";
 
-    std::cout << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
+    std::cerr << "Running time: " << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
     return 0;
 }
 

@@ -15,7 +15,7 @@ reads=reads.fq
 reads_in=reads.in
 # output alignment files
 dida_mpi_sam=dida_mpi.sam
-dida_wrapper_sam=aln.sam
+dida_wrapper_sam=dida_wrapper.sam
 abyss_map_sam=abyss_map.sam
 
 #------------------------------------------------------------
@@ -67,7 +67,7 @@ $(dida_mpi_sam):  $(reads) $(ref)
 	$(dida_mpi_run) > $@
 
 $(dida_wrapper_sam): $(reads_in) $(reads) $(ref)
-	$(dida_wrapper_run)
+	$(dida_wrapper_run) > $@
 
 $(abyss_map_sam): $(reads) $(ref)
 	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)

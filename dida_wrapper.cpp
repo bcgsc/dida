@@ -545,7 +545,7 @@ void dida_merge(const int procRank, const char *refName) {
         }
         remove("lreads.sam");
         remove("maxinf");
-        std::cout << "dida finished successfully!\n";
+        std::cerr << "dida finished successfully!\n";
     }
     else {
         std::string rfType;
