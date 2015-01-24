@@ -40,7 +40,7 @@ dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads_in) $(ref
 
 .PHONY: clean identity_test
 
-default: mpi_test
+default: mpi_test wrapper_test
 
 clean:
 	rm -f $(dida_mpi_sam) $(dida_wrapper_sam) $(abyss_map_sam) ref-* *.lines
