@@ -252,6 +252,15 @@ bool is_empty(std::ifstream& pFile) {
     return pFile.peek() == std::ifstream::traits_type::eof();
 }
 
+void dida_system(const char* command)
+{
+	int result = std::system(command);
+	if (result != 0) {
+		perror(command);
+		exit(EXIT_FAILURE);
+	}
+}
+
 void dida_partition(const int procRank, const char *refName) {
     if (procRank==0) {
         wgetPrt(refName, opt::pnum);
@@ -265,27 +274,27 @@ void dida_index(const int procRank, const int procSize, const char *refName) {
             std::ostringstream amap_ind_stm;
             amap_ind_stm << "abyss-index " << refPartName;
             std::cerr<<amap_ind_stm.str()<<"\n";
-            std::system(amap_ind_stm.str().c_str());
+            dida_system(amap_ind_stm.str().c_str());
         }
         else if (opt::mapper== "bwa-mem"){
             std::ostringstream bwa_ind_stm;
             bwa_ind_stm << "bwa index " << refPartName;
             std::cerr<<bwa_ind_stm.str()<<"\n";
-            std::system(bwa_ind_stm.str().c_str());
+            dida_system(bwa_ind_stm.str().c_str());
         }
         else if (opt::mapper== "bowtie2"){
             std::ostringstream bow_ind_stm;
             std::string bowRef = refPartName.substr(0,refPartName.rfind("."));
             bow_ind_stm << "bowtie2-build " << refPartName << " " << bowRef;
             std::cerr<<bow_ind_stm.str()<<"\n";
-            std::system(bow_ind_stm.str().c_str());
+            dida_system(bow_ind_stm.str().c_str());
         }
         else if (opt::mapper== "novoalign"){
             std::ostringstream novo_ind_stm;
             std::string novoRef = refPartName.substr(0,refPartName.rfind("."));
             novo_ind_stm << "novoindex -k " << opt::alen << " " << novoRef << " " << refPartName;
             std::cerr<<novo_ind_stm.str()<<"\n";
-            std::system(novo_ind_stm.str().c_str());
+            dida_system(novo_ind_stm.str().c_str());
         }
         else {
             std::cerr << "Error in aligner name;\n";
@@ -491,14 +500,14 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
             amap_aln_stm<<"abyss-map --order -j"<<omp_get_max_threads()<<" -l"<<opt::alen<<
             " "<<readfile_stm.str()<<" "<<refPartName<<" > aln-"<<procRank<<".sam";
             std::cerr<<amap_aln_stm.str()<<"\n";
-            std::system(amap_aln_stm.str().c_str());
+            dida_system(amap_aln_stm.str().c_str());
         }
         else if (opt::mapper== "bwa-mem"){
             std::ostringstream bwa_aln_stm;
             bwa_aln_stm << "bwa mem -t " <<omp_get_max_threads()<<" -k"<<opt::alen<<" "<<
             refPartName<<" "<<readfile_stm.str()<<" > aln-"<<procRank<<".sam";
             std::cerr<<bwa_aln_stm.str()<<"\n";
-            std::system(bwa_aln_stm.str().c_str());
+            dida_system(bwa_aln_stm.str().c_str());
         }
         else if (opt::mapper== "bowtie2"){
             std::ostringstream bow_aln_stm;
@@ -506,7 +515,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
             bow_aln_stm << "bowtie2-align -f -p " <<omp_get_max_threads()<<
             " -x "<<bowRef<<" -U "<<readfile_stm.str()<< " -S aln-"<<procRank<<".sam";
             std::cerr<<bow_aln_stm.str()<<"\n";
-            std::system(bow_aln_stm.str().c_str());
+            dida_system(bow_aln_stm.str().c_str());
         }
         else if (opt::mapper== "novoalign"){
             std::ostringstream novo_aln_stm;
@@ -514,7 +523,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
             novo_aln_stm << "novoalign -o Sync -o SAM -f " << readfile_stm.str() <<
             " -d "<<novoRef<<" > aln-"<<procRank<<".sam";
             std::cerr<<novo_aln_stm.str()<<"\n";
-            std::system(novo_aln_stm.str().c_str());
+            dida_system(novo_aln_stm.str().c_str());
         }
         else {
             std::cerr << "Error in aligner name;\n";
