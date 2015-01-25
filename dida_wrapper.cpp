@@ -400,21 +400,15 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
 	}
 	std::ofstream msFile("lreads.sam");
     size_t fileNo=0, readId=0;
-    std::string readHead, readSeq, readDir, readQual, rName;
+    std::string readHead, readSeq, readDir, readQual;
     for (unsigned i = 0; i < queryFiles.size(); ++i) {
         std::ifstream readFile[2];
-        readFile[0].open(rName.c_str());
-        if (!opt::se) {
-            getline(libFile, rName);
-            readFile[1].open(rName.c_str());
-            assert(readFile[1]);
-        }
         readFile[0].open(queryFiles[i]);
         assert(readFile[0]);
         if (!opt::se) {
-           readFile[1].open(queryFiles[++i]);
-           assert(readFile[1]);
-		}
+            readFile[1].open(queryFiles[++i]);
+            assert(readFile[1]);
+        }
         bool readValid=true;
         while(readValid) {
             readValid=false;
