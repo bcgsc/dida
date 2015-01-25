@@ -32,7 +32,7 @@ l?=60
 n?=10000
 # commands to run dida
 dida_mpi_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref)
-dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads_in) $(ref)
+dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads) $(ref)
 
 #------------------------------------------------------------
 # special targets
@@ -55,9 +55,6 @@ $(ref):
 
 $(reads):
 	curl $(reads_url) | gunzip -c | head -$n > $(reads)
-
-$(reads_in): $(reads)
-	for read in $(reads); do echo $$read; done > $@
 
 #------------------------------------------------------------
 # running DIDA/abyss-map

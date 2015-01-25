@@ -383,7 +383,7 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
     return myFilters;
 }
 
-void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &myFilters) {
+void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::vector<bool> > &myFilters) {
 #ifdef _OPENMP
     double start = omp_get_wtime();
 #else
@@ -401,16 +401,20 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
 	std::ofstream msFile("lreads.sam");
     size_t fileNo=0, readId=0;
     std::string readHead, readSeq, readDir, readQual, rName;
-    std::ifstream libFile(libName);
-    while (getline(libFile, rName)) {
+    for (unsigned i = 0; i < queryFiles.size(); ++i) {
         std::ifstream readFile[2];
         readFile[0].open(rName.c_str());
-        assert(readFile[0]);
         if (!opt::se) {
             getline(libFile, rName);
             readFile[1].open(rName.c_str());
             assert(readFile[1]);
         }
+        readFile[0].open(queryFiles[i]);
+        assert(readFile[0]);
+        if (!opt::se) {
+           readFile[1].open(queryFiles[++i]);
+           assert(readFile[1]);
+		}
         bool readValid=true;
         while(readValid) {
             readValid=false;
@@ -469,7 +473,6 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
             readFile[1].close();
         
     }
-    libFile.close();
     msFile.close();
     for (int pIndex=0; pIndex<opt::pnum; ++pIndex)
     	rdFiles[pIndex].close();
@@ -483,10 +486,10 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
 #endif
 }
 
-void dida_dispatch(const int procRank, const char *libName, const char *refName) {
+void dida_dispatch(const int procRank, const std::vector<char*>& queryFiles, const char *refName) {
    	if (procRank==0) {
         std::vector< std::vector<bool> > myFilters = loadFilter(refName);
-        dispatchRead(libName, myFilters);
+        dispatchRead(queryFiles, myFilters);
     }
 }
 
@@ -707,8 +710,11 @@ int main(int argc, char** argv) {
 	if (opt::bmer_step <= 0)
 		opt::bmer_step = opt::alen - opt::bmer + 1;
     
-	const char *libName(argv[argc-2]);
-	const char *refName(argv[argc-1]);
+	std::vector<char*> queryFiles;
+	for (; optind < argc - 1; ++optind)
+		queryFiles.push_back(argv[optind]);
+
+	const char *refName(argv[optind++]);
     
 	int procSize, procRank, provided;
     
@@ -749,7 +755,8 @@ int main(int argc, char** argv) {
     dida_barrier(procRank, procSize);
     //MPI_Barrier(MPI_COMM_WORLD);
 	dida_index(procRank, procSize, refName);
-	dida_dispatch(procRank, libName, refName);
+//	dida_dispatch(procRank, libName, refName);
+	dida_dispatch(procRank, queryFiles, refName);
     dida_barrier(procRank, procSize);
     //MPI_Barrier(MPI_COMM_WORLD);
 	dida_align(procRank, procSize, refName);
