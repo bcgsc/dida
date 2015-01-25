@@ -405,10 +405,12 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
     while (getline(libFile, rName)) {
         std::ifstream readFile[2];
         readFile[0].open(rName.c_str());
+        assert(readFile[0]);
         if (!opt::se) {
-			getline(libFile, rName);
-			readFile[1].open(rName.c_str());
-		}
+            getline(libFile, rName);
+            readFile[1].open(rName.c_str());
+            assert(readFile[1]);
+        }
         bool readValid=true;
         while(readValid) {
             readValid=false;
