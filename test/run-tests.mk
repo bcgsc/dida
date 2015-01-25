@@ -82,8 +82,10 @@ wrapper_test: $(abyss_map_sam) $(dida_wrapper_sam)
 	@echo $@": PASSED!"
 
 wrapper_stream_test: $(reads) $(ref)
-	mpirun -np $(np) dida-wrapper --se -j$j -l$l \
-		<(abyss-tofastq $(reads)) $(ref) > /dev/null
+	mpirun -np $(np) bash -c \
+		'dida-wrapper --se -j$j -l$l \
+		<(abyss-tofastq $(reads)) $(ref) > /dev/null'
+	@echo $@": PASSED!"
 
 simple_identity_test: $(abyss_map_sam) $(dida_mpi_sam)
 	comm --nocheck-order -3 \
