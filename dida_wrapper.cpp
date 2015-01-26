@@ -328,11 +328,8 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
 #endif
     
 #ifdef _OPENMP
-	unsigned tNum = omp_get_max_threads()>opt::pnum?opt::pnum:omp_get_max_threads();
-    if (opt::threads < tNum && opt::threads > 0)
-        tNum = opt::threads;
-	std::cerr << "Number of threads=" << tNum << std::endl;
-	omp_set_num_threads(tNum);
+	std::cerr << "Number of threads=" << opt::threads << std::endl;
+	omp_set_num_threads(opt::threads);
 #endif
 	
 	int pIndex,chunk=1;
@@ -497,14 +494,14 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
         
         if (opt::mapper== "abyss-map") {
             std::ostringstream amap_aln_stm;
-            amap_aln_stm<<"abyss-map --order -j"<<omp_get_max_threads()<<" -l"<<opt::alen<<
+            amap_aln_stm<<"abyss-map --order -j"<<opt::threads<<" -l"<<opt::alen<<
             " "<<readfile_stm.str()<<" "<<refPartName<<" > aln-"<<procRank<<".sam";
             std::cerr<<amap_aln_stm.str()<<"\n";
             dida_system(amap_aln_stm.str().c_str());
         }
         else if (opt::mapper== "bwa-mem"){
             std::ostringstream bwa_aln_stm;
-            bwa_aln_stm << "bwa mem -t " <<omp_get_max_threads()<<" -k"<<opt::alen<<" "<<
+            bwa_aln_stm << "bwa mem -t " <<opt::threads<<" -k"<<opt::alen<<" "<<
             refPartName<<" "<<readfile_stm.str()<<" > aln-"<<procRank<<".sam";
             std::cerr<<bwa_aln_stm.str()<<"\n";
             dida_system(bwa_aln_stm.str().c_str());
@@ -512,7 +509,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
         else if (opt::mapper== "bowtie2"){
             std::ostringstream bow_aln_stm;
             std::string bowRef = refPartName.substr(0,refPartName.rfind("."));
-            bow_aln_stm << "bowtie2-align -f -p " <<omp_get_max_threads()<<
+            bow_aln_stm << "bowtie2-align -f -p " <<opt::threads<<
             " -x "<<bowRef<<" -U "<<readfile_stm.str()<< " -S aln-"<<procRank<<".sam";
             std::cerr<<bow_aln_stm.str()<<"\n";
             dida_system(bow_aln_stm.str().c_str());
