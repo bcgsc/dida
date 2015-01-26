@@ -81,7 +81,7 @@ mrg -p4 -a abyss-map -m ord > output.sam
 If we want to use bwa-mem instead of ABySS-map, we would use the same script with changes to steps 2, 4 and 5:
 
 ```bash
-#!/bin/sh
+#!/bin/bash
 
 # step 1: partition target
 prt –p4 CHR14.fa
