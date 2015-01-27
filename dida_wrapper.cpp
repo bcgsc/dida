@@ -55,7 +55,7 @@ namespace opt {
 	unsigned ibits = 8;
     
 	/** The number of parallel threads. */
-	static unsigned threads = 0;
+	static unsigned threads = 1;
     
 	/** The number of partitions. */
 	static int pnum = -1;
