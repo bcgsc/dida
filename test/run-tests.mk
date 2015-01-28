@@ -43,7 +43,7 @@ dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(test_reads) $(t
 
 .PHONY: clean identity_test
 
-default: mpi_test wrapper_test
+default: mpi_test wrapper_test wrapper_stream_test
 
 clean:
 	rm -f $(dida_mpi_sam) $(dida_wrapper_sam) \
