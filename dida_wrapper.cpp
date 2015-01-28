@@ -43,6 +43,8 @@ static const char USAGE_MESSAGE[] =
 "  -j, --threads=N         use N parallel threads [partitions]\n"
 "  -b, --bfl=N             use N bp for Bloom filter windows[20]\n"
 "  -h, --hash=N            use N hash functions for Bloom filter[5]\n"
+"      --no-clean          don't remove temporary files on completion [disabled]\n"
+"  -l, --alen=N            minimum alignment length [20]\n"
 "  -a, --aligner=STR       use STR as the base aligner\n"
 "  -m, --merge=STR         use STR modefor merging partial sam files[best]\n"
 "      --help              display this help and exit\n"
@@ -63,6 +65,9 @@ namespace opt {
 	/** The number of hash functions. */
 	int nhash = 5;
     
+	/** If true, remove temp files on completion. */
+	int clean = 1;
+
 	/** Minimum alignment length. */
 	int alen = 20;
     
@@ -78,7 +83,6 @@ namespace opt {
     /** The merge mode. */
     std::string merge = "best";
 
-    
 	/** single-end library. */
 	static int se;
     
@@ -88,7 +92,7 @@ namespace opt {
 
 static const char shortopts[] = "s:l:b:j:a:m:h:";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_NO_CLEAN, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "threads",	required_argument, NULL, 'j' },
@@ -101,6 +105,7 @@ static const struct option longopts[] = {
 	{ "se",	no_argument, &opt::se, 1 },
 	{ "fq",	no_argument, &opt::fq, 1 },
 	{ "help",	no_argument, NULL, OPT_HELP },
+	{ "no-clean",	no_argument, NULL, OPT_NO_CLEAN },
 	{ "version",	no_argument, NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
 };
@@ -532,16 +537,18 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
 void dida_merge(const int procRank, const char *refName) {
     if (procRank==0) {
         call_merger(opt::pnum, opt::mapper, opt::merge);
-        for (int i=1; i <= opt::pnum; ++i) {
-            std::ostringstream alnfile_stm;
-            alnfile_stm << "aln-"<<i<<".sam";
-            remove(alnfile_stm.str().c_str());
-        }
-        remove("lreads.sam");
-        remove("maxinf");
+		if (opt::clean) {
+			for (int i=1; i <= opt::pnum; ++i) {
+				std::ostringstream alnfile_stm;
+				alnfile_stm << "aln-"<<i<<".sam";
+				remove(alnfile_stm.str().c_str());
+			}
+			remove("lreads.sam");
+			remove("maxinf");
+		}
         std::cerr << "dida finished successfully!\n";
     }
-    else {
+    else if (opt::clean) {
         std::string rfType;
         std::ostringstream readfile_stm;
         (!opt::fq)?rfType = ".fa":rfType = ".fastq";
@@ -669,6 +676,8 @@ int main(int argc, char** argv) {
 			case OPT_HELP:
 				std::cerr << USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
+			case OPT_NO_CLEAN:
+				opt::clean = 0; break;
 			case OPT_VERSION:
 				std::cerr << VERSION_MESSAGE;
 				exit(EXIT_SUCCESS);
