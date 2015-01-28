@@ -311,7 +311,7 @@ void bestMer(const int pNum, const std::string &alignerName) {
 					s1Visit[readId]=s1Val;
 					s2Visit[readId]=s2Val;
 				}
-				else if(mVal==mVisit[readId]&&s1Val==s1Visit[readId]&&s2Val==s2Visit[readId])
+                else if(mVal==mVisit[readId])
 					qVisit[readId]=0;
 			}
 			else if (!rVisit[readId])
