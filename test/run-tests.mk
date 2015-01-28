@@ -1,6 +1,6 @@
 #!/usr/bin/make -rRf
 
-SHELL=/bin/bash -o pipefail
+SHELL=/bin/bash
 
 #------------------------------------------------------------
 # test input/output files
@@ -9,10 +9,13 @@ SHELL=/bin/bash -o pipefail
 # target seq for alignments
 ref_url:=http://gage.cbcb.umd.edu/data/Staphylococcus_aureus/Data.original/genome.fasta
 ref=ref.fa
+test_ref=test_ref.fa
+
 # query seqs for alignments
 reads_url:=http://gage.cbcb.umd.edu/data/Staphylococcus_aureus/Data.original/frag_1.fastq.gz
-reads=reads.fq
-reads_in=reads.in
+reads=reads.fq.gz
+test_reads=test_reads.fq
+
 # output alignment files
 dida_mpi_sam=dida_mpi.sam
 dida_wrapper_sam=dida_wrapper.sam
@@ -29,10 +32,10 @@ j?=1
 # min align length
 l?=60
 # num of reads to align
-n?=10000
+n?=2500
 # commands to run dida
-dida_mpi_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(reads) $(ref)
-dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads) $(ref)
+dida_mpi_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(test_reads) $(test_ref)
+dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(test_reads) $(test_ref)
 
 #------------------------------------------------------------
 # special targets
@@ -43,31 +46,43 @@ dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(reads) $(ref)
 default: mpi_test wrapper_test
 
 clean:
-	rm -f $(dida_mpi_sam) $(dida_wrapper_sam) $(abyss_map_sam) ref-* *.lines
+	rm -f $(dida_mpi_sam) $(dida_wrapper_sam) \
+		$(abyss_map_sam) $(test_reads) \
+		ref-* *.lines
 
 #------------------------------------------------------------
 # downloading/building test input data
 #------------------------------------------------------------
 
-# download ref and split into chunks of 100,000bp or less
+# download ref
 $(ref):
-	curl $(ref_url) | fold -w 100000 | awk '{print ">"i++; print $0}' > $(ref)
+	curl $(ref_url) > $@
 
+# split ref into chunks of 100,000bp or less
+$(test_ref): $(ref)
+	fold -w 100000 $^ | awk '{print ">"i++; print $$0}' > $@
+
+# download some reads
 $(reads):
-	curl $(reads_url) | gunzip -c | head -$n > $(reads)
+	curl $(reads_url) > $@
+
+# extract first $n reads
+$(test_reads): $(reads)
+	zcat $(reads) | paste - - - - | head -$n | \
+		tr '\t' '\n' > $@
 
 #------------------------------------------------------------
 # running DIDA/abyss-map
 #------------------------------------------------------------
 
-$(dida_mpi_sam):  $(reads) $(ref)
+$(dida_mpi_sam):  $(test_reads) $(test_ref)
 	$(dida_mpi_run) > $@
 
-$(dida_wrapper_sam): $(reads_in) $(reads) $(ref)
+$(dida_wrapper_sam): $(test_reads) $(test_ref)
 	$(dida_wrapper_run) > $@
 
-$(abyss_map_sam): $(reads) $(ref)
-	abyss-map --order -l$l $(reads) $(ref) > $(abyss_map_sam)
+$(abyss_map_sam): $(test_reads) $(test_ref)
+	abyss-map --order -l$l $^ > $@
 
 #------------------------------------------------------------
 # tests
@@ -81,10 +96,10 @@ wrapper_test: $(abyss_map_sam) $(dida_wrapper_sam)
 	compare-sam $(abyss_map_sam) $(dida_wrapper_sam)
 	@echo $@": PASSED!"
 
-wrapper_stream_test: $(reads) $(ref)
+wrapper_stream_test: $(test_reads) $(test_ref)
 	mpirun -np $(np) bash -c \
 		'dida-wrapper --se -j$j -l$l \
-		<(abyss-tofastq $(reads)) $(ref) > /dev/null'
+		<(abyss-tofastq $(test_reads)) $(test_ref) > /dev/null'
 	@echo $@": PASSED!"
 
 simple_identity_test: $(abyss_map_sam) $(dida_mpi_sam)
