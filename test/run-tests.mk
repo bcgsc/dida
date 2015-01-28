@@ -34,7 +34,7 @@ l?=60
 # num of reads to align
 n?=2500
 # commands to run dida
-dida_mpi_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(test_reads) $(test_ref)
+dida_mpi_run?=mpirun -np `expr $(np) + 1` dida-mpi --se -j$j -l$l $(test_reads) $(test_ref)
 dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(wrapper_opt) $(test_reads) $(test_ref)
 
 #------------------------------------------------------------

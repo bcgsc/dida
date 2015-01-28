@@ -592,8 +592,8 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
 }
 
 samRec getSam(std::vector <samRec> &recBuffer){
-	int mVal, s1Val, s2Val, cgV1, cgV2, cgV3;
-	int rVisit_max=0, qVisit_max=0, mVisit_max=0, s1Visit_max=0, s2Visit_max=0;
+	int mVal, cgV1, cgV2, cgV3;
+	int rVisit_max=0, qVisit_max=0, mVisit_max=0;
 	char cgC1, cgC2, cgC3;
     for (size_t i = 0; i < recBuffer.size(); ++i) {
     	std::istringstream iss(recBuffer[i].SamCr);
@@ -601,23 +601,17 @@ samRec getSam(std::vector <samRec> &recBuffer){
     	iss>>cgV1>>cgC1>>cgV2>>cgC2>>cgV3>>cgC3;
     	if (recBuffer[i].SamFg!=4) {
 			if  (cgC1 == 'M') {
-				s1Val=0;
 				mVal=cgV1;
-				s2Val = (cgC2=='S')?cgV2:0;
 			}
 			else {
-				s1Val=cgV1;
 				mVal=cgV2;
-				s2Val = (cgC3=='S')?cgV3:0;
 			}
 			if (mVal>mVisit_max) {
 				rVisit_max=i;
 				qVisit_max=recBuffer[i].SamMq;
 				mVisit_max=mVal;
-				s1Visit_max=s1Val;
-				s2Visit_max=s2Val;
 			}
-			else if(mVal==mVisit_max&&s1Val==s1Visit_max&&s2Val==s2Visit_max)
+            else if(mVal==mVisit_max)
 				qVisit_max=0;
     	}
     }
