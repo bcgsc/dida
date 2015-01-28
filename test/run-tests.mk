@@ -35,7 +35,7 @@ l?=60
 n?=2500
 # commands to run dida
 dida_mpi_run?=mpirun -np $(np) dida-mpi --se -j$j -l$l $(test_reads) $(test_ref)
-dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(test_reads) $(test_ref)
+dida_wrapper_run?=mpirun -np $(np) dida-wrapper --se -j$j -l$l $(wrapper_opt) $(test_reads) $(test_ref)
 
 #------------------------------------------------------------
 # special targets
@@ -98,7 +98,7 @@ wrapper_test: $(abyss_map_sam) $(dida_wrapper_sam)
 
 wrapper_stream_test: $(test_reads) $(test_ref)
 	mpirun -np $(np) bash -c \
-		'dida-wrapper --se -j$j -l$l \
+		'dida-wrapper --se -j$j -l$l $(wrapper_opt) \
 		<(abyss-tofastq $(test_reads)) $(test_ref) > /dev/null'
 	@echo $@": PASSED!"
 
