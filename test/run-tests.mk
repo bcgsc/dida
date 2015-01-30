@@ -82,7 +82,7 @@ $(dida_wrapper_sam): $(test_reads) $(test_ref)
 	$(dida_wrapper_run) > $@
 
 $(abyss_map_sam): $(test_reads) $(test_ref)
-	abyss-map --order -l$l $^ > $@
+	abyss-map --order -j$j -l$l $^ > $@
 
 #------------------------------------------------------------
 # tests
