@@ -124,3 +124,15 @@ DIDA has a fully streamlined version, which performs the dispatch, align, and me
 ```
 $ qsub -N dida-chr14 -pe openmpi 6 <<< 'mpirun –np 5 dida-mpi –l28 frag_1.fastq frag_2.fastq CHR14.fa > res-chr14.sam > output.sam'
 ```
+
+# Compatibility
+
+Both `dida-wrapper` and `dida-mpi` require MPI libraries with support for multithreading.
+
+`dida-wrapper` is known to work well with:
+
+* MPICH 3.1.3, with configure option `--enable-threads=funneled`
+
+`dida-wrapper` has known issues with:
+
+* Open MPI 1.8.4, with configure option `--enable-mpi-thread-multiple` (deadlock issues)
