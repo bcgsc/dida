@@ -399,8 +399,10 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
 		if (!opt::fq) rstm << "mreads-" << i+1 << ".fa";
 		else rstm << "mreads-" << i+1 << ".fastq";
 		rdFiles[i].open((rstm.str()).c_str());
+		assert(rdFiles[i]);
 	}
 	std::ofstream msFile("lreads.sam");
+	assert(msFile);
     size_t fileNo=0, readId=0;
     std::string readHead, readSeq, readDir, readQual;
     for (unsigned i = 0; i < queryFiles.size(); ++i) {
