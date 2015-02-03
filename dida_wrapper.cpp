@@ -730,6 +730,14 @@ int main(int argc, char** argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &procSize);
 	MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
     
+	// determine the hostname we are running on
+	const size_t MAX_HOSTNAME = 256;
+	char hostname[MAX_HOSTNAME];
+	if (gethostname(hostname, MAX_HOSTNAME) != 0) {
+		perror("gethostname");
+		exit(EXIT_FAILURE);
+	}
+
     if (opt::pnum < 1)
 		opt::pnum = procSize - 1;
     
@@ -749,6 +757,9 @@ int main(int argc, char** argv) {
         << " bmer_step=" << opt::bmer_step << std::endl;
 	}
     
+	std::cerr << "rank " << procRank << " running on "
+		<< hostname << std::endl;
+
     double wTime = MPI_Wtime(); /* Wallclock time*/
     
     dida_partition(procRank, refName);
