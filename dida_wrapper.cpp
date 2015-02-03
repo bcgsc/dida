@@ -446,7 +446,8 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
                 for(size_t bIndex = 0; bIndex<readBuffer.size(); ++bIndex) {
                     faqRec bRead = readBuffer[bIndex];
                     size_t readLen = bRead.readSeq.length();
-                    for (size_t j=0; j <= readLen-opt::bmer; j+=opt::bmer_step) {
+                    for (int j=0; j <= (int)readLen-opt::bmer; j+=opt::bmer_step) {
+                        assert((int)readLen >= opt::bmer);
                         std::string bMer = bRead.readSeq.substr(j,opt::bmer);
                         getCanon(bMer);
                         if (filContain(myFilters, pIndex, bMer)) {
