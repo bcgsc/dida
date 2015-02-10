@@ -12,10 +12,11 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
 AC_PROG_INSTALL
+AC_PROG_RANLIB
 
 # Checks for header files.
 AC_CHECK_HEADERS([dlfcn.h fcntl.h float.h limits.h \
-	stddef.h stdint.h stdlib.h sys/param.h])
+	stddef.h stdint.h stdlib.h sys/param.h zlib.h])
 AC_HEADER_STDBOOL
 AC_HEADER_STDC
 
@@ -52,6 +53,11 @@ AC_CHECK_FUNC(ceilf, [], AC_DEFINE(ceilf, [ceil],
 
 # Check for the dynamic linking library.
 AC_CHECK_LIB([dl], [dlsym])
+
+# zlib (optional)
+AC_CHECK_LIB([z], [gzwrite])
+AM_CONDITIONAL([HAVE_LIBZ],
+	[test $ac_cv_header_zlib_h = yes -a $ac_cv_lib_z_gzwrite = yes])
 
 # Check for OpenMP.
 AC_LANG_PUSH([C++])
@@ -116,5 +122,8 @@ AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 AC_SUBST(MPI_LIBS, "$LIBS")
 LIBS="$libs"
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([
+	lib/gzstream-1.5/Makefile
+	Makefile
+])
 AC_OUTPUT

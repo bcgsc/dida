@@ -1,3 +1,7 @@
+if HAVE_LIBZ
+SUBDIRS = lib/gzstream-1.5
+endif
+
 bin_PROGRAMS = dida-mpi dida-wrapper prt dsp mrg
 
 dida_mpi_CPPFLAGS = -I$(top_srcdir)/Common
@@ -18,7 +22,15 @@ dida_mpi_SOURCES = \
 
 dida_wrapper_CPPFLAGS = -I$(top_srcdir)/Common
 
+if HAVE_LIBZ
+dida_wrapper_CPPFLAGS += -I$(top_srcdir)/lib/gzstream-1.5
+endif
+
 dida_wrapper_LDADD = $(MPI_LIBS)
+
+if HAVE_LIBZ
+dida_wrapper_LDADD += $(top_builddir)/lib/gzstream-1.5/libgzstream.a
+endif
 
 dida_wrapper_SOURCES = \
 	Common/Uncompress.cpp \
