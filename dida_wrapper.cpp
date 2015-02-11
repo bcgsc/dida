@@ -542,14 +542,14 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
         if (opt::mapper== "abyss-map") {
             std::ostringstream amap_aln_stm;
             amap_aln_stm<<"abyss-map --order -j"<<opt::threads<<" -l"<<opt::alen<<
-            " "<<readsName<<" "<<refPartName<<" "<<outputRedir;
+            " "<<readsName<<" "<<refPartName<<" "<<outputRedir.str();
             std::cerr<<amap_aln_stm.str()<<"\n";
             dida_system(amap_aln_stm.str().c_str());
         }
         else if (opt::mapper== "bwa-mem") {
             std::ostringstream bwa_aln_stm;
             bwa_aln_stm << "bwa mem -t " <<opt::threads<<" -k"<<opt::alen<<" "<<
-            refPartName<<" "<<readsName<<" "<<outputRedir;
+            refPartName<<" "<<readsName<<" "<<outputRedir.str();
             std::cerr<<bwa_aln_stm.str()<<"\n";
             dida_system(bwa_aln_stm.str().c_str());
         }
@@ -557,7 +557,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
             std::ostringstream bow_aln_stm;
             std::string bowRef = refPartName.substr(0,refPartName.rfind("."));
             bow_aln_stm << "bowtie2-align -f -p " <<opt::threads<<
-            " -x "<<bowRef<<" -U "<<readsName<< " "<<outputRedir;
+            " -x "<<bowRef<<" -U "<<readsName<< " "<<outputRedir.str();
             std::cerr<<bow_aln_stm.str()<<"\n";
             dida_system(bow_aln_stm.str().c_str());
         }
@@ -565,7 +565,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
             std::ostringstream novo_aln_stm;
             std::string novoRef = refPartName.substr(0,refPartName.rfind("."));
             novo_aln_stm << "novoalign -o Sync -o SAM -f " << readsName <<
-            " -d "<<novoRef<<" "<<outputRedir;
+            " -d "<<novoRef<<" "<<outputRedir.str();
             std::cerr<<novo_aln_stm.str()<<"\n";
             dida_system(novo_aln_stm.str().c_str());
         }
