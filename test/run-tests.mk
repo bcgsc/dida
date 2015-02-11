@@ -48,6 +48,7 @@ default: mpi_test wrapper_test wrapper_stream_test
 clean:
 	rm -f $(dida_mpi_sam) $(dida_wrapper_sam) \
 		$(abyss_map_sam) $(test_reads) \
+		aln-*.sam* mreads-* lreads.sam* maxinf \
 		ref-* *.lines
 
 #------------------------------------------------------------
