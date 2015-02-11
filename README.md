@@ -136,3 +136,7 @@ Both `dida-wrapper` and `dida-mpi` require MPI libraries with support for multit
 `dida-wrapper` has known issues with:
 
 * Open MPI 1.8.4, with configure option `--enable-mpi-thread-multiple` (deadlock issues)
+
+# Acknowledgements
+
+This project uses the [gzstream](http://www.cs.unc.edu/Research/compgeom/gzstream) library written by Deepak Bandyopadhyay and Lutz Kettner at the Computational Geometry Group at UNC Chapel Hill (LGPL license). 
