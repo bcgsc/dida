@@ -5,6 +5,7 @@
 #include "mrg.h"
 
 #include "mpi.h"
+#include "GzipStream.h"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -52,6 +53,9 @@ static const char USAGE_MESSAGE[] =
     "  -r, --rec=N             report up to N sam records for each query[5]\n"
     "      --help              display this help and exit\n"
     "      --version           output version information and exit\n"
+#if HAVE_LIBZ
+    "  -Z  --no-gzip           don't gzip intermediate files [disabled]\n"
+#endif
     "\n"
     "Report bugs to hmohamadi@bcgsc.ca.\n";
 
@@ -96,7 +100,7 @@ static int se;
 static int fq;
 }
 
-static const char shortopts[] = "s:l:b:j:a:m:h:i:r:";
+static const char shortopts[] = "s:l:b:j:a:m:h:i:r:Z";
 
 enum { OPT_HELP = 1, OPT_NO_CLEAN, OPT_VERSION };
 
@@ -115,6 +119,7 @@ static const struct option longopts[] = {
     { "help",	no_argument, NULL, OPT_HELP },
     { "no-clean",	no_argument, NULL, OPT_NO_CLEAN },
     { "version",	no_argument, NULL, OPT_VERSION },
+    { "no-gzip",	no_argument, NULL, 'Z' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -400,6 +405,22 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
     return myFilters;
 }
 
+std::string getReadsFilename(int procRank)
+{
+	std::ostringstream s;
+	s << "mreads-" << procRank;
+	if (opt::fq)
+		s << ".fq";
+	else
+		s << ".fa";
+#if HAVE_LIBZ
+	if (opt::gzip)
+		s << ".gz";
+#endif
+	assert(s);
+	return s.str();
+}
+
 void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::vector<bool> > &myFilters) {
 #ifdef _OPENMP
     double start = omp_get_wtime();
@@ -408,14 +429,11 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
 #endif
 
     size_t buffSize = 4000000;
-    std::ofstream rdFiles[opt::pnum];
-    for (int i = 0; i < opt::pnum; ++i) {
-        std::stringstream rstm;
-        if (!opt::fq) rstm << "mreads-" << i+1 << ".fa";
-        else rstm << "mreads-" << i+1 << ".fastq";
-        rdFiles[i].open((rstm.str()).c_str());
-        assert(rdFiles[i]);
-    }
+
+	std::ostream* rdFiles[opt::pnum];
+	for (int i = 0; i < opt::pnum; ++i)
+		rdFiles[i] = openOutputStream(getReadsFilename(i+1));
+
     std::ofstream msFile("lreads.sam");
     assert(msFile);
     size_t fileNo=0, readId=0;
@@ -469,9 +487,9 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
                             #pragma omp critical
                             dspRead[bIndex] = true;
                             if (!opt::fq)
-                                rdFiles[pIndex] << bRead.readHead << "\n" << bRead.readSeq << "\n";
+                                *rdFiles[pIndex] << bRead.readHead << "\n" << bRead.readSeq << "\n";
                             else
-                                rdFiles[pIndex] << bRead.readHead << "\n" << bRead.readSeq << "\n+\n"<< bRead.readQual << "\n";
+                                *rdFiles[pIndex] << bRead.readHead << "\n" << bRead.readSeq << "\n+\n"<< bRead.readQual << "\n";
                             break;
                         }
                     }
@@ -489,7 +507,7 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
     }
     msFile.close();
     for (int pIndex=0; pIndex<opt::pnum; ++pIndex)
-        rdFiles[pIndex].close();
+		closeOutputStream(rdFiles[pIndex]);
     std::ofstream imdFile("maxinf", std::ios_base::app);
     imdFile<<readId<<"\n";
     imdFile.close();
@@ -509,23 +527,29 @@ void dida_dispatch(const int procRank, const std::vector<char*>& queryFiles, con
 
 void dida_align(const int procRank, const int procSize, const char *refName) {
     if (procRank < procSize && procRank > 0) {
-        std::string rfType;
-        std::ostringstream readfile_stm;
-        (!opt::fq)?rfType = ".fa":rfType = ".fastq";
-        readfile_stm << "mreads-"<<procRank<<rfType;
+		std::string readsName = getReadsFilename(procRank);
         std::string refPartName = getPrtFilename(refName, procRank);
-
+		std::ostringstream outputRedir;
+#if HAVE_LIBZ
+		if (opt::gzip)
+			outputRedir << "| gzip >" << getSamFilename(procRank)
+				<< ".gz";
+		else
+			outputRedir << ">" << getSamFilename(procRank);
+#else
+		outputRedir << ">" << getSamFilename(procRank);
+#endif
         if (opt::mapper== "abyss-map") {
             std::ostringstream amap_aln_stm;
             amap_aln_stm<<"abyss-map --order -j"<<opt::threads<<" -l"<<opt::alen<<
-                        " "<<readfile_stm.str()<<" "<<refPartName<<" > aln-"<<procRank<<".sam";
+            " "<<readsName<<" "<<refPartName<<" "<<outputRedir;
             std::cerr<<amap_aln_stm.str()<<"\n";
             dida_system(amap_aln_stm.str().c_str());
         }
         else if (opt::mapper== "bwa-mem") {
             std::ostringstream bwa_aln_stm;
             bwa_aln_stm << "bwa mem -t " <<opt::threads<<" -k"<<opt::alen<<" "<<
-                        refPartName<<" "<<readfile_stm.str()<<" > aln-"<<procRank<<".sam";
+            refPartName<<" "<<readsName<<" "<<outputRedir;
             std::cerr<<bwa_aln_stm.str()<<"\n";
             dida_system(bwa_aln_stm.str().c_str());
         }
@@ -533,15 +557,15 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
             std::ostringstream bow_aln_stm;
             std::string bowRef = refPartName.substr(0,refPartName.rfind("."));
             bow_aln_stm << "bowtie2-align -f -p " <<opt::threads<<
-                        " -x "<<bowRef<<" -U "<<readfile_stm.str()<< " -S aln-"<<procRank<<".sam";
+            " -x "<<bowRef<<" -U "<<readsName<< " "<<outputRedir;
             std::cerr<<bow_aln_stm.str()<<"\n";
             dida_system(bow_aln_stm.str().c_str());
         }
         else if (opt::mapper== "novoalign") {
             std::ostringstream novo_aln_stm;
             std::string novoRef = refPartName.substr(0,refPartName.rfind("."));
-            novo_aln_stm << "novoalign -o Sync -o SAM -f " << readfile_stm.str() <<
-                         " -d "<<novoRef<<" > aln-"<<procRank<<".sam";
+            novo_aln_stm << "novoalign -o Sync -o SAM -f " << readsName <<
+            " -d "<<novoRef<<" "<<outputRedir;
             std::cerr<<novo_aln_stm.str()<<"\n";
             dida_system(novo_aln_stm.str().c_str());
         }
@@ -556,23 +580,16 @@ void dida_merge(const int procRank, const char *refName) {
     if (procRank==0) {
         call_merger(opt::pnum, opt::mapper, opt::merge, opt::nsam);
         if (opt::clean) {
-            for (int i=1; i <= opt::pnum; ++i) {
-                std::ostringstream alnfile_stm;
-                alnfile_stm << "aln-"<<i<<".sam";
-                remove(alnfile_stm.str().c_str());
-            }
-            remove("lreads.sam");
+			for (int i=1; i <= opt::pnum; ++i)
+				remove(getSamFilename(i).c_str());
+			remove(getUnmappedSamFilename().c_str());
             remove("maxinf");
         }
         std::cerr << "dida finished successfully!\n";
     }
     else if (opt::clean) {
-        std::string rfType;
-        std::ostringstream readfile_stm;
-        (!opt::fq)?rfType = ".fa":rfType = ".fastq";
-        readfile_stm << "mreads-"<<procRank<<rfType;
+        remove(getReadsFilename(procRank).c_str());
         std::string refPartName = getPrtFilename(refName, procRank);
-        remove(readfile_stm.str().c_str());
         remove(refPartName.c_str());
 
         if (opt::mapper=="abyss-map") {
@@ -701,7 +718,8 @@ int main(int argc, char** argv) {
         case 'i':
             arg >> opt::ibits;
             break;
-
+        case 'Z':
+            opt::gzip = 0; break;
         case OPT_HELP:
             std::cerr << USAGE_MESSAGE;
             exit(EXIT_SUCCESS);
@@ -733,6 +751,18 @@ int main(int argc, char** argv) {
                   << " --help' for more information.\n";
         exit(EXIT_FAILURE);
     }
+
+	// 'fast'/'ord'/'best' mergers don't work with gzip option
+	// (because they do file seeks)
+	if (opt::merge == "fast" ||
+		opt::merge == "ord" ||
+		opt::merge == "best") {
+		std::cerr << PROGRAM ": '" << opt::merge << "' "
+			"merge option doesn't support gzip "
+			"(disabling gzip of intermediate files)"
+			<< std::endl;
+		opt::gzip = 0;
+	}
 
     if (opt::bmer <= 0)
         opt::bmer = 3 * opt::alen / 4;

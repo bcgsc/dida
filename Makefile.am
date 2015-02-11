@@ -39,6 +39,9 @@ dida_wrapper_SOURCES = \
 	Common/SignalHandler.h \
 	Common/Fcontrol.cpp \
 	Common/Fcontrol.h \
+	Common/GzipStream.h \
+	Common/Options.h \
+	Common/Options.cc \
 	Common/prt.cpp \
 	Common/prt.h \
 	Common/mrg.cpp \

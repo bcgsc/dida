@@ -14,10 +14,10 @@
 struct samHed
 {
     std::string SQ1;
-    char sn1;
+	char sn1;
     char sn2;
     char sn3;
-    unsigned sqId;
+	unsigned sqId;
     std::string SQ3;
     int hedPr;
 };
@@ -38,6 +38,10 @@ struct samRec
     std::string SamPh;
     int SamPr;
 };
+
+std::string getSamFilename(int);
+
+std::string getUnmappedSamFilename();
 
 void getInf(unsigned &, unsigned &);
 
@@ -64,7 +68,6 @@ void fordMer(const int, const std::string &);
 void bestMer(const int, const std::string &);;
 
 int call_merger(const int, const std::string &, const std::string &, const unsigned);
-
 
 #endif
 
