@@ -6,7 +6,7 @@
 std::string getSamFilename(int procRank)
 {
 	std::ostringstream s;
-	s << "aln-" << procRank;
+	s << "aln-" << procRank << ".sam";
 #if HAVE_LIBZ
 	if (opt::gzip)
 		s << ".gz";
