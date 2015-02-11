@@ -433,9 +433,9 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
 	std::ostream* rdFiles[opt::pnum];
 	for (int i = 0; i < opt::pnum; ++i)
 		rdFiles[i] = openOutputStream(getReadsFilename(i+1));
+	std::ostream* msFile = openOutputStream(getUnmappedSamFilename());
 
-    std::ofstream msFile("lreads.sam");
-    assert(msFile);
+	assert(*msFile);
     size_t fileNo=0, readId=0;
     std::string readHead, readSeq, readDir, readQual;
     for (unsigned i = 0; i < queryFiles.size(); ++i) {
@@ -497,7 +497,7 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
                 }
             } // end dispatch buffer
             for(size_t bIndex = 0; bIndex<readBuffer.size(); ++bIndex) {
-                if(!dspRead[bIndex]) msFile << readBuffer[bIndex].readHead.substr(1,std::string::npos) << "\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
+                if(!dspRead[bIndex]) *msFile << readBuffer[bIndex].readHead.substr(1,std::string::npos) << "\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
             }
         }
         readFile[0].close();
@@ -505,7 +505,7 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
             readFile[1].close();
 
     }
-    msFile.close();
+    closeOutputStream(msFile);
     for (int pIndex=0; pIndex<opt::pnum; ++pIndex)
 		closeOutputStream(rdFiles[pIndex]);
     std::ofstream imdFile("maxinf", std::ios_base::app);
