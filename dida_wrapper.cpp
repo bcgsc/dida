@@ -532,8 +532,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
 		std::ostringstream outputRedir;
 #if HAVE_LIBZ
 		if (opt::gzip)
-			outputRedir << "| gzip >" << getSamFilename(procRank)
-				<< ".gz";
+			outputRedir << "| gzip >" << getSamFilename(procRank);
 		else
 			outputRedir << ">" << getSamFilename(procRank);
 #else
