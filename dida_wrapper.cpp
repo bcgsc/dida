@@ -752,18 +752,6 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-	// 'fast'/'ord'/'best' mergers don't work with gzip option
-	// (because they do file seeks)
-	if (opt::merge == "fast" ||
-		opt::merge == "ord" ||
-		opt::merge == "best") {
-		std::cerr << PROGRAM ": '" << opt::merge << "' "
-			"merge option doesn't support gzip "
-			"(disabling gzip of intermediate files)"
-			<< std::endl;
-		opt::gzip = 0;
-	}
-
     if (opt::bmer <= 0)
         opt::bmer = 3 * opt::alen / 4;
 

@@ -177,8 +177,8 @@ void fstMer(const int pNum, const std::string &alignerName) {
     // Second pass, Writing
 
     for (int i = 0; i < pNum; ++i) {
-		samFiles[i]->clear();
-		samFiles[i]->seekg(0,samFiles[i]->beg);
+		closeInputStream(samFiles[i]);
+		samFiles[i] = openInputStream(getSamFilename(i+1));
         for (int j = 0; j < headEnd[i]; ++j)
 			getline(*samFiles[i], line);
     }
@@ -240,14 +240,14 @@ void fordMer(const int pNum, const std::string &alignerName) {
     // Second pass, Writing
 
     for (int i = 0; i < pNum; ++i) {
-		samFiles[i]->clear();
-		samFiles[i]->seekg(0,samFiles[i]->beg);
+		closeInputStream(samFiles[i]);
+		samFiles[i] = openInputStream(getSamFilename(i+1));
         //Discarding @
         for (int j = 0; j < headEnd[i]; ++j)
 			getline(*samFiles[i], line);
     }
-    samFiles[pNum]->clear();
-	samFiles[pNum]->seekg(0,samFiles[pNum]->beg);
+	closeInputStream(samFiles[pNum]);
+	samFiles[pNum] = openInputStream(getUnmappedSamFilename());
 
 
     char colChar;
@@ -349,8 +349,8 @@ void bestMer(const int pNum, const std::string &alignerName) {
     // Second pass, Writing
 
     for (int i = 0; i < pNum; ++i) {
-		samFiles[i]->clear();
-		samFiles[i]->seekg(0,samFiles[i]->beg);
+		closeInputStream(samFiles[i]);
+		samFiles[i] = openInputStream(getSamFilename(i+1));
         //Discarding @
         for (int j = 0; j < headEnd[i]; ++j)
 			getline(*samFiles[i], line);
@@ -364,16 +364,16 @@ void bestMer(const int pNum, const std::string &alignerName) {
     unsigned pNext;
     int tLen;
 
-	std::ifstream nullSam(getUnmappedSamFilename().c_str());
+	std::istream* nullSam = openInputStream(getUnmappedSamFilename().c_str());
     bool pairSign = true;
     if (alignerName=="abyss-map") {
-        getline(nullSam, line);
+		getline(*nullSam, line);
         std::istringstream iss(line);
         iss>> readId >> colChar >> readHead;
         if (readHead[readHead.length()-2] != '/')
             pairSign = false;
-        nullSam.clear();
-        nullSam.seekg(0,nullSam.beg);
+		closeInputStream(nullSam);
+		nullSam = openInputStream(getUnmappedSamFilename().c_str());
     }
 
     for (unsigned i=0; i<readCount; ++i) {
@@ -396,7 +396,7 @@ void bestMer(const int pNum, const std::string &alignerName) {
             }
         }
         else {
-            getline(nullSam, line);
+			getline(*nullSam, line);
             std::istringstream iss(line);
             iss>> readId >> colChar >> readHead;
             if (pairSign)
@@ -408,7 +408,7 @@ void bestMer(const int pNum, const std::string &alignerName) {
 
     for (int i = 0; i < pNum; ++i)
         closeInputStream(samFiles[i]);
-    nullSam.close();
+    closeInputStream(nullSam);
     delete [] rVisit;
     delete [] qVisit;
 }
