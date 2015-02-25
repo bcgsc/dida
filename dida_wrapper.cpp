@@ -333,6 +333,13 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
 #endif
     
 #ifdef _OPENMP
+	if ((int)opt::threads > opt::pnum) {
+		std::cerr << "Warning: number of threads (-j) must be less than or equal to "
+			"number of partitions (-p)" << std::endl;
+		std::cerr << "Warning: reducing number of threads from " << opt::threads
+			<< " to " << opt::pnum << std::endl;
+		opt::threads = opt::pnum;
+	}
 	std::cerr << "Number of threads=" << opt::threads << std::endl;
 	omp_set_num_threads(opt::threads);
 #endif
