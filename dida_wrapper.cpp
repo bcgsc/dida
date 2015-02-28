@@ -28,9 +28,9 @@
 
 
 static const char VERSION_MESSAGE[] =
-PROGRAM " Version 0-1.3 \n"
+PROGRAM " Version 1-0.0 \n"
 "Written by Hamid Mohamadi.\n"
-"Copyright 2014 Canada's Michael Smith Genome Science Centre\n";
+"Copyright 2015 Canada's Michael Smith Genome Science Centre\n";
 
 static const char USAGE_MESSAGE[] =
 "Usage: " PROGRAM " [OPTION]... QUERY... TARGET\n"
@@ -40,13 +40,16 @@ static const char USAGE_MESSAGE[] =
 " Options:\n"
 "\n"
 "  -p, --partition=N       divide reference to N partitions\n"
-"  -j, --threads=N         use N parallel threads [partitions]\n"
+"  -j, --threads=N         use N parallel threads [MAX]\n"
 "  -b, --bfl=N             use N bp for Bloom filter windows[20]\n"
 "  -h, --hash=N            use N hash functions for Bloom filter[5]\n"
+"  -i, --bit=N             use N bits for each item in Bloom filter [8]\n"
 "      --no-clean          don't remove temporary files on completion [disabled]\n"
 "  -l, --alen=N            minimum alignment length [20]\n"
+"  -s, --step=N            step size used when breaking a query sequence into bmers [bmer]\n"
 "  -a, --aligner=STR       use STR as the base aligner\n"
 "  -m, --merge=STR         use STR modefor merging partial sam files[best]\n"
+"  -r, --rec=N             report up to N sam records for each query[5]\n"
 "      --help              display this help and exit\n"
 "      --version           output version information and exit\n"
 "\n"
@@ -82,6 +85,9 @@ namespace opt {
 
     /** The merge mode. */
     std::string merge = "best";
+    
+    /** Maximum number of sam record per query. */
+    unsigned nsam = 5;
 
 	/** single-end library. */
 	static int se;
@@ -90,7 +96,7 @@ namespace opt {
 	static int fq;
 }
 
-static const char shortopts[] = "s:l:b:j:a:m:h:";
+static const char shortopts[] = "s:l:b:j:a:m:h:i:r:";
 
 enum { OPT_HELP = 1, OPT_NO_CLEAN, OPT_VERSION };
 
@@ -100,6 +106,8 @@ static const struct option longopts[] = {
 	{ "alen",	required_argument, NULL, 'l' },
 	{ "step",	required_argument, NULL, 's' },
 	{ "hash",	required_argument, NULL, 'h' },
+    { "bit",	required_argument, NULL, 'i' },
+    { "rec",	required_argument, NULL, 'r' },
 	{ "aligner",	required_argument, NULL, 'a' },
 	{ "merge",	required_argument, NULL, 'm' },
 	{ "se",	no_argument, &opt::se, 1 },
@@ -328,22 +336,15 @@ std::vector< std::vector<bool> > loadFilter(const char *refName) {
     
 #ifdef _OPENMP
 	double start = omp_get_wtime();
+    if((int)opt::threads > opt::pnum)
+        omp_set_num_threads(opt::pnum);
+    else
+        omp_set_num_threads(opt::threads);
+    std::cerr << "Number of threads=" << omp_get_max_threads() << "\n";
 #else
 	clock_t sTime = clock();
 #endif
     
-#ifdef _OPENMP
-	if ((int)opt::threads > opt::pnum) {
-		std::cerr << "Warning: number of threads (-j) must be less than or equal to "
-			"number of partitions (-p)" << std::endl;
-		std::cerr << "Warning: reducing number of threads from " << opt::threads
-			<< " to " << opt::pnum << std::endl;
-		opt::threads = opt::pnum;
-	}
-	std::cerr << "Number of threads=" << opt::threads << std::endl;
-	omp_set_num_threads(opt::threads);
-#endif
-	
 	int pIndex,chunk=1;
 	//begin create filters
 	std::vector< std::vector<bool> > myFilters(opt::pnum);
@@ -406,10 +407,10 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
 		if (!opt::fq) rstm << "mreads-" << i+1 << ".fa";
 		else rstm << "mreads-" << i+1 << ".fastq";
 		rdFiles[i].open((rstm.str()).c_str());
-		assert(rdFiles[i]);
+        assert(rdFiles[i]);
 	}
 	std::ofstream msFile("lreads.sam");
-	assert(msFile);
+    assert(msFile);
     size_t fileNo=0, readId=0;
     std::string readHead, readSeq, readDir, readQual;
     for (unsigned i = 0; i < queryFiles.size(); ++i) {
@@ -448,7 +449,7 @@ void dispatchRead(const std::vector<char*>& queryFiles, const std::vector< std::
             //dispatch buffer
             int pIndex;
             std::vector<bool> dspRead(buffSize,false);
-#pragma omp parallel for shared(readBuffer,myFilters,rdFiles,dspRead) private(pIndex)
+#pragma omp parallel for shared(readBuffer,rdFiles,dspRead) private(pIndex)
             for (pIndex=0; pIndex<opt::pnum; ++pIndex) {
                 for(size_t bIndex = 0; bIndex<readBuffer.size(); ++bIndex) {
                     faqRec bRead = readBuffer[bIndex];
@@ -546,7 +547,7 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
 
 void dida_merge(const int procRank, const char *refName) {
     if (procRank==0) {
-        call_merger(opt::pnum, opt::mapper, opt::merge);
+        call_merger(opt::pnum, opt::mapper, opt::merge, opt::nsam);
 		if (opt::clean) {
 			for (int i=1; i <= opt::pnum; ++i) {
 				std::ostringstream alnfile_stm;
@@ -682,6 +683,8 @@ int main(int argc, char** argv) {
 				arg >> opt::merge; break;
 			case 'h':
 				arg >> opt::nhash; break;
+			case 'i':
+				arg >> opt::ibits; break;
                 
 			case OPT_HELP:
 				std::cerr << USAGE_MESSAGE;
@@ -740,14 +743,14 @@ int main(int argc, char** argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &procSize);
 	MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
     
-	// determine the hostname we are running on
-	const size_t MAX_HOSTNAME = 256;
+    // determine the hostname we are running on
+    const size_t MAX_HOSTNAME = 256;
 	char hostname[MAX_HOSTNAME];
 	if (gethostname(hostname, MAX_HOSTNAME) != 0) {
 		perror("gethostname");
 		exit(EXIT_FAILURE);
 	}
-
+    
     if (opt::pnum < 1)
 		opt::pnum = procSize - 1;
     
@@ -767,22 +770,18 @@ int main(int argc, char** argv) {
         << " bmer_step=" << opt::bmer_step << std::endl;
 	}
     
-	std::cerr << "rank " << procRank << " running on "
+    std::cerr << "rank " << procRank << " running on "
 		<< hostname << std::endl;
-
+    
     double wTime = MPI_Wtime(); /* Wallclock time*/
     
     dida_partition(procRank, refName);
     dida_barrier(procRank, procSize);
-    //MPI_Barrier(MPI_COMM_WORLD);
 	dida_index(procRank, procSize, refName);
-//	dida_dispatch(procRank, libName, refName);
 	dida_dispatch(procRank, queryFiles, refName);
     dida_barrier(procRank, procSize);
-    //MPI_Barrier(MPI_COMM_WORLD);
 	dida_align(procRank, procSize, refName);
     dida_barrier(procRank, procSize);
-    //MPI_Barrier(MPI_COMM_WORLD);
 	dida_merge(procRank, refName);
     
     wTime = MPI_Wtime() - wTime;

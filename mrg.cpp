@@ -11,9 +11,9 @@
 #define PROGRAM "mrg"
 
 static const char VERSION_MESSAGE[] =
-PROGRAM " Version 0.1.2 \n"
+PROGRAM " Version 1.0.0 \n"
 "Written by Hamid Mohamadi.\n"
-"Copyright 2014 Canada's Michael Smith Genome Science Centre\n";
+"Copyright 2015 Canada's Michael Smith Genome Science Centre\n";
 
 static const char USAGE_MESSAGE[] =
 "Usage: " PROGRAM " [OPTION]\n"
@@ -22,15 +22,21 @@ static const char USAGE_MESSAGE[] =
 " Options:\n"
 "\n"
 "  -p, --partition=N       value of N partitions\n"
+"  -r, --rec=N             report up to N sam records for each query[5]\n"
 "  -a, --aligner=NAME      NAME aligner used for alignmet step\n"
 "  -m, --mode=NAME         use NAME mode for merging. fast: fast merging, ord: ordered merging, \
-mem: min memory merging, best: best quality sam record [ord]\n"
+mem: coupled with -r to report up to N sam records for each read, best: best quality sam record [mem]\n"
 "      --help              display this help and exit\n"
 "      --version           output version information and exit\n"
 "\n"
 "Report bugs to hmohamadi@bcgsc.ca.\n";
 
-static const char shortopts[] = "p:a:m:";
+namespace opt {
+    /** Maximum number of sam record per query. */
+    unsigned nsam = 5;
+}
+
+static const char shortopts[] = "p:a:m:r:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -38,6 +44,7 @@ static const struct option longopts[] = {
 	{ "partition",	required_argument, NULL, 'p' },
 	{ "aligner",	required_argument, NULL, 'a' },
 	{ "mode",	required_argument, NULL, 'm' },
+    { "rec",	required_argument, NULL, 'r' },
 	{ "help",	no_argument, NULL, OPT_HELP },
 	{ "version",	no_argument, NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -137,7 +144,7 @@ void memMer(const int pNum, const std::string &alignerName) {
 			if (getline(samFiles[i], line))
 				recBuffer.push(recLoad(line,i));
 
-    long psOrd = -1;
+    long psOrd = -1, nsamCount=0;
     std::string psHead;
     bool samVal = true;
 	while (!recBuffer.empty()) {
@@ -145,12 +152,17 @@ void memMer(const int pNum, const std::string &alignerName) {
 		if (cRec.SamOrd != psOrd) {
 			if (!samVal)
 				comFile<<psHead<<"\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
-			else
+			else {
 				samVal = false;
+                nsamCount=0;
+            }
 		}
 		if (cRec.SamFg != 4) {
 			samVal = true;
-			comFile<<cRec<<"\n";
+            if (nsamCount < opt::nsam) { //CHANGE
+                comFile<<cRec<<"\n";
+                ++nsamCount;
+            }
 		}
 		recBuffer.pop();
 		if (getline(samFiles[cRec.SamPr], line))
@@ -323,8 +335,8 @@ void bestMer(const int pNum, const std::string &alignerName) {
 	uint16_t *s2Visit = new uint16_t [readCount];
 	for(unsigned i=0; i<readCount;++i) s2Visit[i]=0;
 
-    unsigned readId, bitFg, refId, readPos;
-    std::string line, readHead, headSQ;
+    unsigned readId, bitFg, readPos;
+    std::string line, readHead, headSQ, refId;
 	uint16_t mVal, s1Val, s2Val, rQual, cgV1, cgV2, cgV3;
     char colChar, cgC1, cgC2, cgC3;
 
@@ -459,7 +471,9 @@ int main(int argc, char** argv) {
 				arg >> pNum; break;
 			case 'm':
 				arg >> runMode; break;
-
+            case 'r':
+				arg >> opt::nsam; break;
+                
 			case OPT_HELP:
 				std::cerr << USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);

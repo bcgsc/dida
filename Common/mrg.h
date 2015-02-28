@@ -63,7 +63,7 @@ void fordMer(const int, const std::string &);
 
 void bestMer(const int, const std::string &);;
 
-int call_merger(const int, const std::string &, const std::string &);;
+int call_merger(const int, const std::string &, const std::string &, const unsigned);
 
 
 #endif

@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, const samRec& c) {
     return os;
 }
 
-void memMer(const int pNum, const std::string &alignerName) {
+void memMer(const int pNum, const std::string &alignerName, const unsigned nsam) {
     std::string mapStr(alignerName);
 	std::ifstream samFiles[pNum+1];
     
@@ -95,7 +95,7 @@ void memMer(const int pNum, const std::string &alignerName) {
 			if (getline(samFiles[i], line))
 				recBuffer.push(recLoad(line,i));
     
-    long psOrd = -1;
+    long psOrd = -1, nsamCount=0;
     std::string psHead;
     bool samVal = true;
 	while (!recBuffer.empty()) {
@@ -103,12 +103,17 @@ void memMer(const int pNum, const std::string &alignerName) {
 		if (cRec.SamOrd != psOrd) {
 			if (!samVal)
 				std::cout<<psHead<<"\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n";
-			else
+			else {
 				samVal = false;
+                nsamCount=0;
+            }
 		}
 		if (cRec.SamFg != 4) {
 			samVal = true;
-			std::cout<<cRec<<"\n";
+            if (nsamCount < nsam) { //CHANGE
+                std::cout<<cRec<<"\n";
+                ++nsamCount;
+            }			
 		}
 		recBuffer.pop();
 		if (getline(samFiles[cRec.SamPr], line))
@@ -276,8 +281,8 @@ void bestMer(const int pNum, const std::string &alignerName) {
 	uint16_t *s2Visit = new uint16_t [readCount];
 	for(unsigned i=0; i<readCount;++i) s2Visit[i]=0;
     
-    unsigned readId, bitFg, refId, readPos;
-    std::string line, readHead, headSQ;
+    unsigned readId, bitFg, readPos;
+    std::string line, readHead, headSQ, refId;
 	uint16_t mVal, s1Val, s2Val, rQual, cgV1, cgV2, cgV3;
     char colChar, cgC1, cgC2, cgC3;
     
@@ -391,7 +396,7 @@ void bestMer(const int pNum, const std::string &alignerName) {
 	delete [] qVisit;
 }
 
-int call_merger(const int pNum, const std::string &alignerName, const std::string &runMode) {
+int call_merger(const int pNum, const std::string &alignerName, const std::string &runMode, const unsigned nsam) {
 	clock_t sTime = clock();
     if (runMode == "fast") {
     	std::cerr << "Fast MERGE:\n";
@@ -399,7 +404,7 @@ int call_merger(const int pNum, const std::string &alignerName, const std::strin
     }
     else if (runMode == "mem") {
     	std::cerr << "Minimum memory usage MERGE:\n";
-    	memMer(pNum, alignerName);
+    	memMer(pNum, alignerName, nsam);
     }
     else if (runMode == "ord") {
     	std::cerr << "Ordered and fast MERGE:\n";

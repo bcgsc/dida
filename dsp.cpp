@@ -17,7 +17,7 @@
 static const char VERSION_MESSAGE[] =
 PROGRAM " Version 1.0.0 \n"
 "Written by Hamid Mohamadi.\n"
-"Copyright 2014 Canada's Michael Smith Genome Science Centre\n";
+"Copyright 2015 Canada's Michael Smith Genome Science Centre\n";
 
 static const char USAGE_MESSAGE[] =
 "Usage: " PROGRAM " [OPTION]... QUERY\n"
@@ -28,12 +28,12 @@ static const char USAGE_MESSAGE[] =
 "  -p, --partition=N       divide reference to N partitions\n"
 "  -j, --threads=N         use N parallel threads [partitions]\n"
 "  -l, --alen=N            the minimum alignment length [20]\n"
-"  -b, --bmer=N            size of a bmer [alen/2]\n"
+"  -b, --bmer=N            size of a bmer [3*alen/4]\n"
 "  -s, --step=N            step size used when breaking a query sequence into bmers [bmer]\n"
 "  -h, --hash=N            use N hash functions for Bloom filter [6]\n"
+"  -i, --bit=N             use N bits for each item in Bloom filter [8]\n"
 "      --se                single-end library\n"
 "      --fq                dispatch reads in fastq format\n"
-"      --store             store filters on disk\n"
 "      --help              display this help and exit\n"
 "      --version           output version information and exit\n"
 "\n"
@@ -63,12 +63,12 @@ namespace opt {
     
 	/** single-end library. */
 	static int se;
-
+    
 	/** fastq mode dispatch. */
 	static int fq;
 }
 
-static const char shortopts[] = "s:l:b:p:j:d:h:";
+static const char shortopts[] = "s:l:b:p:j:d:h:i:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -79,6 +79,7 @@ static const struct option longopts[] = {
 	{ "alen",	required_argument, NULL, 'l' },
 	{ "step",	required_argument, NULL, 's' },
 	{ "hash",	required_argument, NULL, 'h' },
+	{ "bit",	required_argument, NULL, 'i' },
 	{ "se",	no_argument, &opt::se, 1 },
 	{ "fq",	no_argument, &opt::fq, 1 },
 	{ "help",	no_argument, NULL, OPT_HELP },
@@ -130,7 +131,7 @@ struct faqRec {
 size_t getInfo(const char *aName, unsigned k) {
 	std::string line;
 	std::ifstream faFile(aName);
-
+    
     getline(faFile, line);
     if (line[0]!='>') {
         std::cerr << "Target file is not in correct format!\n";
@@ -159,26 +160,26 @@ size_t getInfo(const char *aName, unsigned k) {
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed ) {
 	const uint64_t m = 0xc6a4a7935bd1e995;
 	const int r = 47;
-
+    
 	uint64_t h = seed ^ (len * m);
-
+    
 	const uint64_t * data = (const uint64_t *)key;
 	const uint64_t * end = data + (len/8);
-
+    
 	while (data != end)
 	{
 		uint64_t k = *data++;
-
+        
 		k *= m;
 		k ^= k >> r;
 		k *= m;
-
+        
 		h ^= k;
 		h *= m;
 	}
-
+    
 	const unsigned char * data2 = (const unsigned char*)data;
-
+    
 	switch(len & 7)
 	{
         case 7: h ^= uint64_t(data2[6]) << 48;
@@ -190,11 +191,11 @@ uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed ) {
         case 1: h ^= uint64_t(data2[0]);
 	        h *= m;
 	};
-
+    
 	h ^= h >> r;
 	h *= m;
 	h ^= h >> r;
-
+    
 	return h;
 }
 
@@ -226,7 +227,7 @@ void getCanon(std::string &bMer) {
 }
 
 std::vector< std::vector<bool> > loadFilter() {
-
+    
 #ifdef _OPENMP
 	double start = omp_get_wtime();
 #else
@@ -332,14 +333,14 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
                 readBuffer.push_back(rRec);
                 if(!opt::se) fileNo=(fileNo + 1)%2;
                 ++readId;
-                if(readBuffer.size()==buffSize) break;                
+                if(readBuffer.size()==buffSize) break;
             }
             if(readBuffer.size()==buffSize) readValid=true;
-
+            
             //dispatch buffer
             int pIndex;
             std::vector<bool> dspRead(buffSize,false);
-            #pragma omp parallel for shared(readBuffer,myFilters,rdFiles,dspRead) private(pIndex)
+#pragma omp parallel for shared(readBuffer,rdFiles,dspRead) private(pIndex)
             for (pIndex=0; pIndex<opt::pnum; ++pIndex) {
                 for(size_t bIndex = 0; bIndex<readBuffer.size(); ++bIndex) {
                     faqRec bRead = readBuffer[bIndex];
@@ -380,7 +381,7 @@ void dispatchRead(const char *libName, const std::vector< std::vector<bool> > &m
 }
 
 int main(int argc, char** argv) {
-
+    
 #ifdef _OPENMP
 	double start = omp_get_wtime();
 #else
@@ -406,7 +407,9 @@ int main(int argc, char** argv) {
 			case 's':
 				arg >> opt::bmer_step; break;
 			case 'h':
-				arg >> opt::nhash; break;                
+				arg >> opt::nhash; break;
+			case 'i':
+				arg >> opt::ibits; break;
 			case OPT_HELP:
 				std::cerr << USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
@@ -442,6 +445,8 @@ int main(int argc, char** argv) {
 	if (opt::bmer_step <= 0)
 		opt::bmer_step = opt::alen-opt::bmer+1;
     
+    std::cerr<<"num-hash="<<opt::nhash<<"\n";
+    std::cerr<<"bit-item="<<opt::ibits<<"\n";
     std::cerr<<"bmer-step="<<opt::bmer_step<<"\n";
     std::cerr<<"bmer="<<opt::bmer<<"\n";
     std::cerr<<"alen="<<opt::alen<<"\n";
@@ -452,7 +457,7 @@ int main(int argc, char** argv) {
     dispatchRead(libName, myFilters);
     
 	
-
+    
 #ifdef _OPENMP
 	std::cerr << "Running time in sec: " << omp_get_wtime() - start << "\n";
 #else

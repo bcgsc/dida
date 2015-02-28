@@ -30,9 +30,9 @@ const unsigned READ = 0;
 const unsigned WRITE = 1;
 
 static const char VERSION_MESSAGE[] =
-PROGRAM " Version 0-1.3 \n"
+PROGRAM " Version 1-0.0 \n"
 "Written by Hamid Mohamadi.\n"
-"Copyright 2014 Canada's Michael Smith Genome Science Centre\n";
+"Copyright 2015 Canada's Michael Smith Genome Science Centre\n";
 
 static const char USAGE_MESSAGE[] =
 "Usage: " PROGRAM " [OPTION]... QUERY... TARGET\n"
@@ -45,7 +45,8 @@ static const char USAGE_MESSAGE[] =
 "  -l, --alen=N            the minimum alignment length [20]\n"
 "  -b, --bmer=N            size of a bmer [alen/2]\n"
 "  -s, --step=N            step size used when breaking a query sequence into bmers [bmer]\n"
-"  -h, --hash=N            use N hash functions for Bloom filter [6]\n"
+"  -h, --hash=N            use N hash functions for Bloom filter [5]\n"
+"  -i, --bit=N             use N bits for each item in Bloom filter [8]\n"
 "      --help              display this help and exit\n"
 "      --version           output version information and exit\n"
 "\n"
@@ -80,7 +81,7 @@ namespace opt {
 	static int fq;
 }
 
-static const char shortopts[] = "s:l:b:j:d:h:";
+static const char shortopts[] = "s:l:b:j:i:h:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -414,7 +415,7 @@ void dispatchRead(const int procSize, const vector<string>& inFiles, const std::
             readLen = readSeq.length();
             readHead[0]=':';
             bool dspRead = false;
-#pragma omp parallel for shared(myFilters, dspRead) private(pIndex) schedule(static,chunk)
+#pragma omp parallel for shared(dspRead) private(pIndex) schedule(static,chunk)
             for(pIndex=1; pIndex<=opt::pnum; ++pIndex) {
                 for (int j=0; j <= readLen-opt::bmer; j+=opt::bmer_step) {
 					assert((int)readSeq.size() > j);
@@ -562,20 +563,6 @@ void dida_align(const int procRank, const int procSize, const char *refName) {
             stdout_to_pipe(fd2);
             pipe_to_stdin(fd);
 
-            /*execlp("malign", "malign", (char *) 0);
-            perror("malign failed");
-            exit(3);*/
-
-            /*std::ifstream reffile(amapstm.str().c_str());
-            if (!reffile)
-                std::cerr<<"no file\n";
-            else
-                std::cerr<<"file exists\n";
-            if (is_empty(reffile))
-                std::cerr << "reffile is empty\n";
-            else
-                std::cerr<<"file in not empty\n";*/
-
             std::string refPartName = getPrtFilename(refName, procRank);
             std::ostringstream amap_j_stm, amap_l_stm;
             amap_j_stm << "-j" << opt::threads;
@@ -671,6 +658,8 @@ int main(int argc, char** argv) {
 				arg >> opt::bmer_step; break;
 			case 'h':
 				arg >> opt::nhash; break;
+			case 'i':
+				arg >> opt::ibits; break;
 
 			case OPT_HELP:
 				std::cerr << USAGE_MESSAGE;
