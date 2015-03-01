@@ -7,13 +7,13 @@ static inline bool
 fileExists(std::string filename)
 {
     std::ifstream in(filename.c_str());
-	if (in.good()) {
-		in.close();
-		return true;
-	} else {
-		in.close();
-		return false;
-	}
+    if (in.good()) {
+        in.close();
+        return true;
+    } else {
+        in.close();
+        return false;
+    }
 }
 
 #endif

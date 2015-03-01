@@ -14,10 +14,10 @@
 struct samHed
 {
     std::string SQ1;
-	char sn1;
+    char sn1;
     char sn2;
     char sn3;
-	unsigned sqId;
+    unsigned sqId;
     std::string SQ3;
     int hedPr;
 };
