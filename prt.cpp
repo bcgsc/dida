@@ -1,3 +1,4 @@
+#include "config.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -11,7 +12,7 @@
 #define PROGRAM "prt"
 
 static const char VERSION_MESSAGE[] =
-    PROGRAM " Version 1.0.0 \n"
+    PROGRAM " Version " VERSION "\n"
     "Written by Hamid Mohamadi.\n"
     "Copyright 2014 Canada's Michael Smith Genome Science Centre\n";
 
