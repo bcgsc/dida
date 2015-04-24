@@ -13,6 +13,7 @@ dida_mpi_SOURCES = \
 	Common/Uncompress.h \
 	Common/SignalHandler.cpp \
 	Common/SignalHandler.h \
+	Common/FileUtil.h \
 	Common/Fcontrol.cpp \
 	Common/Fcontrol.h \
 	Common/prt.cpp \
@@ -37,6 +38,7 @@ dida_wrapper_SOURCES = \
 	Common/Uncompress.h \
 	Common/SignalHandler.cpp \
 	Common/SignalHandler.h \
+	Common/FileUtil.h \
 	Common/Fcontrol.cpp \
 	Common/Fcontrol.h \
 	Common/GzipStream.h \
