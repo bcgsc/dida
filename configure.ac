@@ -1,5 +1,5 @@
 AC_PREREQ(2.62)
-AC_INIT(DIDA, 1.0.0, hmohamadi@bcgsc.ca, dida,
+AC_INIT(DIDA, 1.0.1, hmohamadi@bcgsc.ca, dida,
 		http://www.bcgsc.ca/platform/bioinfo/software/dida)
 # add 'foreign' to allow README.md instead of README
 AM_INIT_AUTOMAKE([foreign subdir-objects])
