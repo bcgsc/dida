@@ -140,3 +140,13 @@ Both `dida-wrapper` and `dida-mpi` require MPI libraries with support for multit
 # Acknowledgements
 
 This project uses the [gzstream](http://www.cs.unc.edu/Research/compgeom/gzstream) library written by Deepak Bandyopadhyay and Lutz Kettner at the Computational Geometry Group at UNC Chapel Hill (LGPL license). 
+
+Publications
+============
+
+## [DIDA](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0126409)
+
+Hamid Mohamadi, Benjamin P Vandervalk, Anthony Raymond, Shaun D Jackman, Justin Chu, Clay P Breshears, Inanc Birol.
+**DIDA: Distributed Indexing Dispatched Alignment**.
+*PLOS ONE* (2015) 10(4): e0126409.
+[10.1371/journal.pone.0126409 ](http://dx.doi.org/10.1371/journal.pone.0126409)
